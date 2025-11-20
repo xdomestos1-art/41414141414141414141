@@ -14236,31 +14236,31 @@ if Game_Name == "The Bronx" then
                 ReplicatedStorage:WaitForChild("ShopRemote"):InvokeServer("Shiesty")
                 ReplicatedStorage:WaitForChild("ShopRemote"):InvokeServer("BlackGloves")
 
-                task.wait(0.5)
+                task.wait(.1)
 
                 local Shiesty = Backpack:FindFirstChild("Shiesty") or Player.Character:FindFirstChild("Shiesty")
                 if Shiesty then
                 Player.Character.Humanoid:EquipTool(Shiesty)
-                task.wait(0.3)
+                task.wait(.15)
 
                 local Remote = Shiesty:FindFirstChild("RemoteEvent")
                 if Remote then
                 Remote:FireServer()
                 end
 
-                 task.wait(0.5)
+                 task.wait(.15)
                  Player.Character.Humanoid:UnequipTools()
                  end
 
-                 task.wait(0.3)
+                 task.wait(.15)
                  local Gloves = Backpack:FindFirstChild("BlackGloves") or Player.Character:FindFirstChild("BlackGloves")
                  if Gloves then
                  Player.Character.Humanoid:EquipTool(Gloves)
-                 task.wait(0.3)
+                 task.wait(.15)
 
                  Gloves:Activate()
 
-                 task.wait(0.5)
+                 task.wait(.15)
                  Player.Character.Humanoid:UnequipTools()
                  end
                  end})
@@ -14638,22 +14638,19 @@ if Game_Name == "The Bronx" then
                     end)
                 end})
 
-DupingSection:toggle({
-    name = "Auto Dupe",
-    callback = function(state)
+DupingSection:toggle({name = "Auto Dupe",callback = function(state)
         AutoDupe = state
         task.spawn(function()
             local Player = game.Players.LocalPlayer
             local ReplicatedStorage = game.ReplicatedStorage
 
-            -- İlk tool'u bul ve kaydet,,
             local FirstTool = nil
             repeat
                 task.wait(0.5)
                 FirstTool = Player.Character and Player.Character:FindFirstChildOfClass("Tool")
             until FirstTool or not AutoDupe
 
-            if not FirstTool then
+            if AutoDupe and not FirstTool then
                 library.notifications:create_notification({
                     name = "Aethra",
                     info = "No tool found in hand! Please equip one.",
@@ -14684,18 +14681,17 @@ DupingSection:toggle({
                         end
                     end)
 
-                    -- Dupe işlemleri
                     pcall(function()
                         ReplicatedStorage.ListWeaponRemote:FireServer(ToolName, 999999)
                     end)
 
-                    task.wait(0.27)
+                    task.wait(.25)
 
                     pcall(function()
                         ReplicatedStorage.BackpackRemote:InvokeServer("Store", ToolName)
                     end)
 
-                    task.wait(2.7)
+                    task.wait(2.5)
 
                     pcall(function()
                         ReplicatedStorage.BuyItemRemote:FireServer(ToolName, "Remove", ToolId)
@@ -14709,8 +14705,7 @@ DupingSection:toggle({
                     Cooldown = false
                 end
 
-                -- Her 4 saniyede bir tekrar et
-                task.wait(4)
+                task.wait(3.5)
             end
 
             library.notifications:create_notification({
