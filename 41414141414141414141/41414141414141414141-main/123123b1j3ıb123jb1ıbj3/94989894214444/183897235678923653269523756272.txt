@@ -391,6 +391,10 @@ local Config = {
         ["AutoDrop"] = false;
         ["MoneyAmount"] = false;
 
+        ["antiafk"] = false;
+
+        ["spinbotter"] = false;
+
          ["maskedup"] = false;
 
         ["depos"] = false;
@@ -401,6 +405,8 @@ local Config = {
 
         ["tb3_fov"] = false;
         ["FieldOfViewValue"] = 80;
+
+        ["flynew"] = false;
 
         ["Fly"] = {
             ["Enabled"] = false;
@@ -4558,7 +4564,9 @@ do
                     StartFlight()
                 end
             end)
-            
+
+                            
+                            
             local OnInputBegan = LPH_NO_VIRTUALIZE(function(input: InputObject, gameProcessedEvent: boolean)
                 if gameProcessedEvent then return end
                 if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
@@ -4824,6 +4832,37 @@ do
                     ReplicatedStorage:WaitForChild("BankProcessRemote"):InvokeServer("Drop", tostring(Config.TheBronx.MoneyAmount))
                 end
             end))
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+task.spawn(function()
+    while true do
+        if Config.TheBronx.spinbotter then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.CFrame *= CFrame.Angles(0, math.rad(20), 0)
+            end
+        end
+        task.wait()
+    end
+end)
+
+if Config.TheBronx.antiafk then
+    task.spawn(function()
+        local chr = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+        local hrp = chr:WaitForChild("HumanoidRootPart")
+
+        while true do
+            task.wait(15)
+            hrp.CFrame = hrp.CFrame + Vector3.new(0,0.1,0)
+            task.wait()
+            hrp.CFrame = hrp.CFrame - Vector3.new(0,0.1,0)
+        end
+    end)
+end
+
 
             task.spawn(LPH_NO_VIRTUALIZE(function()
                 while task.wait(.25) do
@@ -13973,11 +14012,11 @@ if not Mobile then
     end
 -- \\ Script
 
-local window = library:window({name = "Aethra", suffix = " #1", gameInfo = string.format("Aethra : %s", Game_Name:lower())})
+local window = library:window({name = "Aeth", suffix = "ra", gameInfo = string.format("Aethra : %s", Game_Name:lower())})
 
 if Game_Name == "The Bronx" then
     window:seperator({name = "Game"}) do
-        local LocalPlayerTab, PlayersTab, PurchaseGunTab, MiscTab, SafeTab = window:tab({name = "Main", tabs = {"Local Player", "Players", "Teleports", "Misc", "Safe"}, icon = GetImage("World.png")}) do
+        local LocalPlayerTab, PlayersTab, PurchaseGunTab, ExtraTab, MiscTab, SafeTab = window:tab({name = "Main", tabs = {"Local Player", "Players", "Teleports", "Extra", "Misc", "Safe"}, icon = GetImage("World.png")}) do
             do -- \\ Safe Tab
                 local SafeItemColumn = SafeTab:column({})
 
@@ -14160,15 +14199,11 @@ if Game_Name == "The Bronx" then
                 end
 
                 LocalPlayerColumn = LocalPlayerTab:column({})
-                local CharacterModsSection = LocalPlayerColumn:section({name = "Character Modifications", side = "right", size = 0.400, icon = GetImage("Wrench.png")})
+                local CharacterModsSection = LocalPlayerColumn:section({name = "Character Modifications", side = "right", size = 0.650, icon = GetImage("Wrench.png")})                
 
                 CharacterModsSection:toggle({type = "toggle", name = "Modify WalkSpeed", flag = "ModifyWalkSpeed_TheBronx", default = false, callback = function(state)
                     Config.MiscSettings.ModifySpeed.Enabled = state
-                end})
-                
-                CharacterModsSection:toggle({type = "toggle", name = "Set Fov", flag = "tb3_fov", default = false, callback = function(state)
-                    Config.TheBronx.tb3_fov = state
-                end})                    
+                end})                   
                 
                 CharacterModsSection:toggle({type = "toggle", name = "Modify JumpPower", flag = "ModifyJumpPower_TheBronx", default = false, callback = function(state)
                     Config.MiscSettings.ModifyJump.Enabled = state
@@ -14214,11 +14249,7 @@ if Game_Name == "The Bronx" then
 
                 CharacterModsSection:slider({name = "WalkSpeed Value", flag = "WalkSpeedValue_TheBronx", min = 0, max = 250, default = 50, suffix = "%", callback = function(state)
                     Config.MiscSettings.ModifySpeed.Value = state
-                end})
-
-                CharacterModsSection:slider({name = "Fov Value", flag = "FieldOfViewValue", min = 80, max = 130, default = 95, suffix = "%", callback = function(state)
-                    Config.TheBronx.FieldOfViewValue = state
-                end})                   
+                end})                  
 
                 CharacterModsSection:slider({name = "JumpPower Value", flag = "JumpPowerValue_TheBronx", min = 0, max = 250, default = 7, suffix = "%", callback = function(state)
                     Config.MiscSettings.ModifyJump.Value = state
@@ -14228,45 +14259,11 @@ if Game_Name == "The Bronx" then
                     Config.TheBronx.ClickTeleportActive = state
                 end})
 
-                CharacterModsSection:button({name = "Wear Shiesty, Gloves.", callback = function()
-                local Player = game.Players.LocalPlayer
-                local Backpack = Player:WaitForChild("Backpack")
-                local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                local ExtraTabColumn = ExtraTab:column({})
 
-                ReplicatedStorage:WaitForChild("ShopRemote"):InvokeServer("Shiesty")
-                ReplicatedStorage:WaitForChild("ShopRemote"):InvokeServer("BlackGloves")
+                local BankSection = ExtraTabColumn:section({name = "Bank Section", side = "right", size = 0.400, icon = GetImage("Settings.png")})
 
-                task.wait(.1)
-
-                local Shiesty = Backpack:FindFirstChild("Shiesty") or Player.Character:FindFirstChild("Shiesty")
-                if Shiesty then
-                Player.Character.Humanoid:EquipTool(Shiesty)
-                task.wait(.15)
-
-                local Remote = Shiesty:FindFirstChild("RemoteEvent")
-                if Remote then
-                Remote:FireServer()
-                end
-
-                 task.wait(.15)
-                 Player.Character.Humanoid:UnequipTools()
-                 end
-
-                 task.wait(.15)
-                 local Gloves = Backpack:FindFirstChild("BlackGloves") or Player.Character:FindFirstChild("BlackGloves")
-                 if Gloves then
-                 Player.Character.Humanoid:EquipTool(Gloves)
-                 task.wait(.15)
-
-                 Gloves:Activate()
-
-                 task.wait(.15)
-                 Player.Character.Humanoid:UnequipTools()
-                 end
-                 end})
-
-
-                local BankSection = LocalPlayerColumn:section({name = "Bank Section", side = "right", size = 0.400, icon = GetImage("Settings.png")})
+                BankSection:label({wrapped = true, name = "Scroll Down For More Settings."})
                 
                 BankSection:toggle({type = "toggle", name = "Auto Drop", flag = "AutoDrop", default = false, callback = function(state)
                     Config.TheBronx.AutoDrop = state
@@ -14290,8 +14287,224 @@ if Game_Name == "The Bronx" then
                 
                 BankSection:slider({name = "Auto Withdraw Amount", flag = "WithdrawAmount", min = 1, max = 90000, default = 500, suffix = "$", callback = function(state)
                     Config.TheBronx.WithdrawAmount = state
-                end})                                     
+                end})
+
+                local ExtraSection = ExtraTabColumn:section({name = "Extra Settings", side = "left", size = 0.600})
+
+                ExtraSection:button({name = "Hide Identity.", callback = function()
+                local Player = game.Players.LocalPlayer
+                local Backpack = Player:WaitForChild("Backpack")
+                local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+                ReplicatedStorage:WaitForChild("ShopRemote"):InvokeServer("Shiesty")
+                ReplicatedStorage:WaitForChild("ShopRemote"):InvokeServer("BlackGloves")
+
+                task.wait(.1)
+
+                local Shiesty = Backpack:FindFirstChild("Shiesty") or Player.Character:FindFirstChild("Shiesty")
+                if Shiesty then
+                Player.Character.Humanoid:EquipTool(Shiesty)
+                task.wait(.1)
+
+                local Remote = Shiesty:FindFirstChild("RemoteEvent")
+                if Remote then
+                Remote:FireServer()
+                end
+
+                 task.wait(.1)
+                 Player.Character.Humanoid:UnequipTools()
+                 end
+
+                 task.wait(.1)
+                 local Gloves = Backpack:FindFirstChild("BlackGloves") or Player.Character:FindFirstChild("BlackGloves")
+                 if Gloves then
+                 Player.Character.Humanoid:EquipTool(Gloves)
+                 task.wait(.1)
+
+                 Gloves:Activate()
+
+                 task.wait(.1)
+                 Player.Character.Humanoid:UnequipTools()
+                 end
+                 end})   
+                 
+                ExtraSection:toggle({type = "toggle", name = "Full Bright", flag = "Fullbright", default = false, callback = function(state)
+                    Config.WorldVisuals.Fullbright = state
+                end})   
+
+                ExtraSection:toggle({type = "toggle", name = "Anti AFK", flag = "antiafk", default = false, callback = function(state)
+                    Config.TheBronx.antiafk = state
+                end})                 
+
+                ExtraSection:toggle({type = "toggle", name = "Spinbot", flag = "spinbotter", default = false, callback = function(state)
+                    Config.TheBronx.spinbotter = state
+                end})                
                 
+                ExtraSection:toggle({type = "toggle", name = "Set Fov", flag = "tb3_fov", default = false, callback = function(state)
+                    Config.TheBronx.tb3_fov = state
+                end})
+
+                ExtraSection:slider({name = "Fov Value", flag = "FieldOfViewValue", min = 80, max = 120, default = 95, suffix = "%", callback = function(state)
+                    Config.TheBronx.FieldOfViewValue = state
+                end}) 
+
+                ExtraSection:label({wrapped = true, name = "Clothing Presets Scroll Down"})
+                
+ExtraSection:button({name = "Reset Clothing.",callback = function()
+        local args = {"Reset Data"}
+        game:GetService("ReplicatedStorage"):WaitForChild("ClothShopRemote"):FireServer(unpack(args))
+    end
+})
+
+ExtraSection:button({name = "Spiderman Outfit",callback = function()
+        local Remote = game.ReplicatedStorage:WaitForChild("ClothShopRemote")
+
+        local function send(a,b,c)
+            Remote:FireServer(a,b,c)
+        end
+        send("Buy","Hats","RedCleezy")
+        send("Buy","Glasses","RedShades")
+        send("Buy","Shirts","Spiderman")
+        send("Buy","Pants","Spiderman")
+        send("Buy","Shiestys","RedShiesty")
+
+        send("Wear","Hats","RedCleezy")
+        send("Wear","Glasses","RedShades")
+        send("Wear","Shirts","Spiderman")
+        send("Wear","Pants","Spiderman")
+        send("Wear","Shiestys","RedShiesty")
+    end
+})
+
+ExtraSection:button({name = "Drip Fit",callback = function()
+        local Remote = game.ReplicatedStorage:WaitForChild("ClothShopRemote")
+
+        local function send(a,b,c)
+            Remote:FireServer(a,b,c)
+        end
+
+        send("Reset Data")
+        send("Buy","Shiestys","Shiesty")
+        send("Buy","Hats","BluHat")   
+        send("Buy","Glasses","BlackShades")
+        send("Buy","Shirts","White Tatted T shirt")
+        send("Buy","Shiestys","Shiesty")
+        send("Buy","Pants","White AF1 BJeans")
+
+        send("Wear","Shiestys","Shiesty")
+        send("Wear","Hats","BluHat")   
+        send("Wear","Glasses","BlackShades")
+        send("Wear","Shirts","White Tatted T shirt")
+        send("Wear","Shiestys","Shiesty")
+        send("Wear","Pants","White AF1 BJeans")        
+    end
+})
+
+ExtraSection:button({name = "Blacked Out Fit",callback = function()
+        local Remote = game.ReplicatedStorage:WaitForChild("ClothShopRemote")
+
+        local function send(a,b,c)
+            Remote:FireServer(a,b,c)
+        end
+
+        send("Reset Data")
+        send("Buy","Hats","Hood")
+        send("Buy","Shiestys","Shiesty")
+        send("Buy","Glasses","BlackShades")
+        send("Buy","Shirts","Zipped Moncler Black")
+        send("Buy","Pants","White AF1 BJeans")
+       
+        send("Wear","Hats","Hood")
+        send("Wear","Shiestys","Shiesty")
+        send("Wear","Glasses","BlackShades")
+        send("Wear","Shirts","Zipped Moncler Black")
+        send("Wear","Pants","White AF1 BJeans")
+    end
+})
+
+ExtraSection:button({name = "Ghost Face Fit",callback = function()
+        local Remote = game.ReplicatedStorage:WaitForChild("ClothShopRemote")
+
+        local function send(a,b,c)
+            Remote:FireServer(a,b,c)
+        end
+
+        send("Reset Data")
+        send("Buy","Masks","GhostFace")
+        send("Buy","Shiestys","Shiesty")
+        send("Buy","Shirts","Black PalmAngel Jacket")
+        send("Buy","Pants","Grey Jean W Dior Runners")
+
+        send("Wear","Masks","GhostFace")
+        send("Wear","Shiestys","Shiesty")
+        send("Wear","Shirts","Black PalmAngel Jacket")
+        send("Wear","Pants","Grey Jean W Dior Runners")        
+    end
+})
+
+ExtraSection:button({name = "Micheal Myers Fit",callback = function()
+        local Remote = game.ReplicatedStorage:WaitForChild("ClothShopRemote")
+
+        local function send(a,b,c)
+            Remote:FireServer(a,b,c)
+        end
+
+        send("Reset Data")
+        send("Buy","Masks","MyersMask")
+        send("Buy","Shiestys","Shiesty")
+        send("Buy","Shirts","Tan Mechanic X")
+        send("Buy","Pants","White AF1 BJeans")
+        
+        send("Wear","Masks","MyersMask")
+        send("Wear","Shiestys","Shiesty")
+        send("Wear","Shirts","Tan Mechanic X")
+        send("Wear","Pants","White AF1 BJeans")           
+    end
+})
+
+ExtraSection:button({name = "Pink Drip Fit",callback = function()
+        local Remote = game.ReplicatedStorage:WaitForChild("ClothShopRemote")
+
+        local function send(a,b,c)
+            Remote:FireServer(a,b,c)
+        end
+
+        send("Reset Data")
+        send("Buy","Hats","PinkCleezy") 
+        send("Buy","Shiestys","PinkShiesty")   
+        send("Buy","Glasses","PinkShades")       
+        send("Buy","Shirts","Pink Bape")
+        send("Buy","Pants","Pink Bapesta Jeans")
+
+        send("Wear","Hats","PinkCleezy") 
+        send("Wear","Shiestys","PinkShiesty")   
+        send("Wear","Glasses","PinkShades")       
+        send("Wear","Shirts","Pink Bape")
+        send("Wear","Pants","Pink Bapesta Jeans")        
+    end
+})
+
+ExtraSection:button({name = "Jason Voorhees Fit",callback = function()
+        local Remote = game.ReplicatedStorage:WaitForChild("ClothShopRemote")
+
+        local function send(a,b,c)
+            Remote:FireServer(a,b,c)
+        end
+
+        
+        send("Reset Data")
+        send("Buy","Shiestys","Shiesty")
+        send("Buy","Masks","JasonMask")     
+        send("Buy","Shirts","Opened Black Zipper Jacket W Tats")
+        send("Buy","Pants","White Jeans w AF1") 
+        
+        send("Wear","Shiestys","Shiesty")
+        send("Wear","Masks","JasonMask")     
+        send("Wear","Shirts","Opened Black Zipper Jacket W Tats")
+        send("Wear","Pants","White Jeans w AF1")       
+    end
+})
+                    
 
                 local UISection = LocalPlayerColumn:section({name = "Toggle Interfaces Section", side = "right", size = 0.220, icon = GetImage("Settings.png")})
 
