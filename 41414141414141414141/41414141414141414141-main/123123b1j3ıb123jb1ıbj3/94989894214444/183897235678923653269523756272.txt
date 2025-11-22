@@ -395,6 +395,8 @@ local Config = {
 
         ["spinbotter"] = false;
 
+        ["autopass"] = false;
+
          ["maskedup"] = false;
 
         ["depos"] = false;
@@ -4832,6 +4834,60 @@ do
                     ReplicatedStorage:WaitForChild("BankProcessRemote"):InvokeServer("Drop", tostring(Config.TheBronx.MoneyAmount))
                 end
             end))
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TextChatService = game:GetService("TextChatService")
+
+local LocalPlayer = Players.LocalPlayer
+local lastSend = 0
+
+local function GetClosestPlayer()
+    local closest = nil
+    local shortest = math.huge
+
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
+
+    local myPos = char.HumanoidRootPart.Position
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            local dist = (p.Character.HumanoidRootPart.Position - myPos).Magnitude
+            if dist < shortest then
+                shortest = dist
+                closest = p
+            end
+        end
+    end
+
+    return closest
+end
+
+RunService.RenderStepped:Connect(function()
+    if Config.TheBronx.autopass then
+        local char = LocalPlayer.Character
+        if not char then return end
+
+        
+        local tool = char:FindFirstChildOfClass("Tool")
+        if tool then
+            local closest = GetClosestPlayer()
+            if closest and tick() - lastSend > 1 then
+                lastSend = tick()
+
+                local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+                if channel then
+                    channel:SendAsync("/passto " .. closest.Name)
+                end
+            end
+        end
+    end
+end)
+
+
+
+
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -14326,7 +14382,11 @@ if Game_Name == "The Bronx" then
                  task.wait(.1)
                  Player.Character.Humanoid:UnequipTools()
                  end
-                 end})   
+                 end})  
+                 
+                ExtraSection:toggle({type = "toggle", name = "Auto Pass To The Closest Player", flag = "autopass", default = false, callback = function(state)
+                    Config.TheBronx.autopass = state
+                end})                  
                  
                 ExtraSection:toggle({type = "toggle", name = "Full Bright", flag = "Fullbright", default = false, callback = function(state)
                     Config.WorldVisuals.Fullbright = state
