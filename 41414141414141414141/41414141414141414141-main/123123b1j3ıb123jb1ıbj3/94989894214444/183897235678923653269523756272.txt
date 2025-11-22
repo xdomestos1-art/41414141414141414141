@@ -14318,8 +14318,6 @@ if Game_Name == "The Bronx" then
                 local ExtraTabColumn = ExtraTab:column({})
 
                 local BankSection = ExtraTabColumn:section({name = "Bank Section", side = "right", size = 0.400, icon = GetImage("Settings.png")})
-
-                BankSection:label({wrapped = true, name = "Scroll Down For More Settings."})
                 
                 BankSection:toggle({type = "toggle", name = "Auto Drop", flag = "AutoDrop", default = false, callback = function(state)
                     Config.TheBronx.AutoDrop = state
@@ -14407,8 +14405,6 @@ if Game_Name == "The Bronx" then
                 ExtraSection:slider({name = "Fov Value", flag = "FieldOfViewValue", min = 80, max = 120, default = 95, suffix = "%", callback = function(state)
                     Config.TheBronx.FieldOfViewValue = state
                 end}) 
-
-                ExtraSection:label({wrapped = true, name = "Clothing Presets Scroll Down"})
                 
 ExtraSection:button({name = "Reset Clothing.",callback = function()
         local args = {"Reset Data"}
