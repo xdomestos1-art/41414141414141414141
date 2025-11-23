@@ -4888,7 +4888,7 @@ end)
 
 
 
-
+-- spinbot
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -4905,16 +4905,39 @@ task.spawn(function()
     end
 end)
 
+
+-- anti afk
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+
 if Config.TheBronx.antiafk then
     task.spawn(function()
-        local chr = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
-        local hrp = chr:WaitForChild("HumanoidRootPart")
-
         while true do
-            task.wait(15)
-            hrp.CFrame = hrp.CFrame + Vector3.new(0,0.1,0)
-            task.wait()
-            hrp.CFrame = hrp.CFrame - Vector3.new(0,0.1,0)
+            task.wait(30)
+
+            
+            pcall(function()
+                local mousePos = Vector2.new(math.random(0, 100), math.random(0, 100))
+                UIS.InputChanged:Fire(UIS, Enum.UserInputType.MouseMovement, mousePos)
+            end)
+
+            
+            pcall(function()
+                UIS.WindowFocusReleased:Fire()
+                task.wait(0.1)
+                UIS.WindowFocused:Fire()
+            end)
+
+            
+            pcall(function()
+                local fakeInput = Enum.KeyCode.W
+                UIS.InputBegan:Fire(UIS, fakeInput, false)
+                task.wait(0.05)
+                UIS.InputEnded:Fire(UIS, fakeInput, false)
+            end)
         end
     end)
 end
@@ -14317,7 +14340,7 @@ if Game_Name == "The Bronx" then
 
                 local ExtraTabColumn = ExtraTab:column({})
 
-                local BankSection = ExtraTabColumn:section({name = "Bank Section", side = "right", size = 0.400, icon = GetImage("Settings.png")})
+                local BankSection = ExtraTabColumn:section({name = "Bank Section", side = "right", size = 0.650, icon = GetImage("Settings.png")})
                 
                 BankSection:toggle({type = "toggle", name = "Auto Drop", flag = "AutoDrop", default = false, callback = function(state)
                     Config.TheBronx.AutoDrop = state
@@ -14331,20 +14354,21 @@ if Game_Name == "The Bronx" then
                     Config.TheBronx.draww = state
                 end})                  
                 
-                BankSection:slider({name = "Auto Drop Amount", flag = "MoneyAmount", min = 100, max = 10000, default = 10, suffix = "$", callback = function(state)
+                BankSection:slider({name = "Auto Drop Amount", flag = "MoneyAmount", min = 100, max = 10000, default = 10000, suffix = "$", callback = function(state)
                     Config.TheBronx.MoneyAmount = state
                 end})
                 
-                BankSection:slider({name = "Auto Deposit Amount", flag = "DepositAmount", min = 1, max = 30000, default = 500, suffix = "$", callback = function(state)
+                BankSection:slider({name = "Auto Deposit Amount", flag = "DepositAmount", min = 1, max = 30000, default = 30000, suffix = "$", callback = function(state)
                     Config.TheBronx.DepositAmount = state
                 end})
                 
-                BankSection:slider({name = "Auto Withdraw Amount", flag = "WithdrawAmount", min = 1, max = 90000, default = 500, suffix = "$", callback = function(state)
+                BankSection:slider({name = "Auto Withdraw Amount", flag = "WithdrawAmount", min = 1, max = 90000, default = 90000, suffix = "$", callback = function(state)
                     Config.TheBronx.WithdrawAmount = state
                 end})
 
-                local ExtraSection = ExtraTabColumn:section({name = "Extra Settings", side = "left", size = 0.600})
-
+                ExtraTabColumn = ExtraTab:column({})
+                local ExtraSection = ExtraTabColumn:section({name = "Extra Settings", side = "left", size = 1.0135})   
+                           
                 ExtraSection:button({name = "Hide Identity.", callback = function()
                 local Player = game.Players.LocalPlayer
                 local Backpack = Player:WaitForChild("Backpack")
@@ -14382,7 +14406,7 @@ if Game_Name == "The Bronx" then
                  end
                  end})  
                  
-                ExtraSection:toggle({type = "toggle", name = "Auto Pass To The Closest Player", flag = "autopass", default = false, callback = function(state)
+                ExtraSection:toggle({type = "toggle", name = "Auto Pass", flag = "autopass", default = false, callback = function(state)
                     Config.TheBronx.autopass = state
                 end})                  
                  
@@ -14418,6 +14442,8 @@ ExtraSection:button({name = "Spiderman Outfit",callback = function()
         local function send(a,b,c)
             Remote:FireServer(a,b,c)
         end
+
+        send("Reset Data")
         send("Buy","Hats","RedCleezy")
         send("Buy","Glasses","RedShades")
         send("Buy","Shirts","Spiderman")
