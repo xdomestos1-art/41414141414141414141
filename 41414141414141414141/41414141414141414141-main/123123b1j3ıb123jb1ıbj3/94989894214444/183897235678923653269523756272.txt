@@ -14340,7 +14340,7 @@ if Game_Name == "The Bronx" then
 
                 local ExtraTabColumn = ExtraTab:column({})
 
-                local BankSection = ExtraTabColumn:section({name = "Bank Section", side = "right", size = 0.650, icon = GetImage("Settings.png")})
+                local BankSection = ExtraTabColumn:section({name = "Bank Section", side = "right", size = 0.550, icon = GetImage("Settings.png")})
                 
                 BankSection:toggle({type = "toggle", name = "Auto Drop", flag = "AutoDrop", default = false, callback = function(state)
                     Config.TheBronx.AutoDrop = state
@@ -14365,6 +14365,99 @@ if Game_Name == "The Bronx" then
                 BankSection:slider({name = "Auto Withdraw Amount", flag = "WithdrawAmount", min = 1, max = 90000, default = 90000, suffix = "$", callback = function(state)
                     Config.TheBronx.WithdrawAmount = state
                 end})
+
+                local Skysection = ExtraTabColumn:section({name = "Custom Skybox", side = "right", size = 0.450, icon = GetImage("Settings.png")})
+
+Skysection:button({name = "Cloudy Realistic", callback = function()
+        local L = game:GetService("Lighting")
+        local old = L:FindFirstChildOfClass("Sky")
+        if old then old:Destroy() end
+        local S = Instance.new("Sky", L)
+
+        S.SkyboxBk = "rbxassetid://1666456837"
+        S.SkyboxDn = "rbxassetid://1666455881"
+        S.SkyboxFt = "rbxassetid://1666457447"
+        S.SkyboxLf = "rbxassetid://1666455318"
+        S.SkyboxRt = "rbxassetid://1666456385"
+        S.SkyboxUp = "rbxassetid://1666458034"
+    end
+})
+
+Skysection:button({name = "Cloudy Night", callback = function()
+        local L = game:GetService("Lighting")
+        local old = L:FindFirstChildOfClass("Sky")
+        if old then old:Destroy() end
+        local S = Instance.new("Sky", L)
+
+        S.SkyboxBk = "rbxassetid://155624722"
+        S.SkyboxDn = "rbxassetid://155624727"
+        S.SkyboxFt = "rbxassetid://155624730"
+        S.SkyboxLf = "rbxassetid://155624736"
+        S.SkyboxRt = "rbxassetid://155624742"
+        S.SkyboxUp = "rbxassetid://155624749"
+    end
+})
+
+Skysection:button({name = "Pink Sky", callback = function()
+        local L = game:GetService("Lighting")
+        local old = L:FindFirstChildOfClass("Sky")
+        if old then old:Destroy() end
+        local S = Instance.new("Sky", L)
+
+        S.SkyboxBk = "rbxassetid://271042516"
+        S.SkyboxDn = "rbxassetid://271077243"
+        S.SkyboxFt = "rbxassetid://271042556"
+        S.SkyboxLf = "rbxassetid://271042310"
+        S.SkyboxRt = "rbxassetid://271042467"
+        S.SkyboxUp = "rbxassetid://271077958"
+    end
+})
+
+Skysection:button({name = "Purple Galaxy", callback = function()
+        local L = game:GetService("Lighting")
+        local old = L:FindFirstChildOfClass("Sky")
+        if old then old:Destroy() end
+        local S = Instance.new("Sky", L)
+
+        S.SkyboxBk = "rbxassetid://16553658937"
+        S.SkyboxDn = "rbxassetid://16553660713"
+        S.SkyboxFt = "rbxassetid://16553660713"
+        S.SkyboxLf = "rbxassetid://16553664042"
+        S.SkyboxRt = "rbxassetid://16553665766"
+        S.SkyboxUp = "rbxassetid://16553667750"
+    end
+})
+
+Skysection:button({name = "Spongebob", callback = function()
+        local L = game:GetService("Lighting")
+        local old = L:FindFirstChildOfClass("Sky")
+        if old then old:Destroy() end
+        local S = Instance.new("Sky", L)
+
+        S.SkyboxBk = "rbxassetid://15962101128"
+        S.SkyboxDn = "rbxassetid://15970246218"
+        S.SkyboxFt = "rbxassetid://15962101128"
+        S.SkyboxLf = "rbxassetid://15962101128"
+        S.SkyboxRt = "rbxassetid://15962101128"
+        S.SkyboxUp = "rbxassetid://15962901054"
+    end
+})
+
+Skysection:button({name = "Red Night", callback = function()
+        local L = game:GetService("Lighting")
+        local old = L:FindFirstChildOfClass("Sky")
+        if old then old:Destroy() end
+        local S = Instance.new("Sky", L)
+
+        S.SkyboxBk = "rbxassetid://401664839"
+        S.SkyboxDn = "rbxassetid://401664862"
+        S.SkyboxFt = "rbxassetid://401664960"
+        S.SkyboxLf = "rbxassetid://401664881"
+        S.SkyboxRt = "rbxassetid://401664901"
+        S.SkyboxUp = "rbxassetid://401664936"
+    end
+})
+
 
                 ExtraTabColumn = ExtraTab:column({})
                 local ExtraSection = ExtraTabColumn:section({name = "Extra Settings", side = "left", size = 1.0135})   
