@@ -4,21 +4,83 @@ end
 
 getgenv().loaded = true 
 
+local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
 
-StarterGui:SetCore("SendNotification", {
-    Title = "Aethra",
-    Text = " Loading... ",
-    Duration = 15, -- seconds the notification stays on screen
-})
+-- Create ScreenGui
+local gui = Instance.new("ScreenGui")
+gui.IgnoreGuiInset = true
+gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+-- Create notification frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 270, 0, 80)
+frame.Position = UDim2.new(1, -300, 0, -100) -- sağ dışta başlasın
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+frame.BackgroundTransparency = 0.15
+frame.BorderSizePixel = 0
+frame.AnchorPoint = Vector2.new(0, 0)
+frame.Parent = gui
+frame.Visible = false
 
 
-task.wait(12)
-StarterGui:SetCore("SendNotification", {
-    Title = "Aethra",
-    Text = " Almost There...",
-    Duration = 15, -- seconds the notification stays on screen
-})
+local shadow = Instance.new("ImageLabel", frame)
+shadow.Size = UDim2.new(1, 30, 1, 30)
+shadow.Position = UDim2.new(0.5, -15, 0.5, -15)
+shadow.Image = "rbxassetid://6015897843"
+shadow.ImageTransparency = 0.5
+shadow.BackgroundTransparency = 1
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Parent = frame
+title.Size = UDim2.new(1, -20, 0, 25)
+title.Position = UDim2.new(0, 10, 0, 8)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Text
+local text = Instance.new("TextLabel")
+text.Parent = frame
+text.Size = UDim2.new(1, -20, 1, -40)
+text.Position = UDim2.new(0, 10, 0, 30)
+text.BackgroundTransparency = 1
+text.Font = Enum.Font.Gotham
+text.TextSize = 15
+text.TextColor3 = Color3.fromRGB(210,210,210)
+text.TextXAlignment = Enum.TextXAlignment.Left
+text.TextWrapped = true
+
+-- Notification Function
+local function notify(titleText, msg, time)
+	frame.Visible = true
+	title.Text = titleText
+	text.Text = msg
+
+	-- slide in
+	TweenService:Create(frame, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {
+		Position = UDim2.new(1, -280, 0, 30)
+	}):Play()
+
+	task.wait(time)
+
+	-- slide out
+	local tween = TweenService:Create(frame, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {
+		Position = UDim2.new(1, -300, 0, -100)
+	})
+	tween:Play()
+	tween.Completed:Wait()
+	frame.Visible = false
+end
+
+-- Your Notifications
+notify("Aethra", "Loading…", 12)
+task.wait(3)
+notify("Last Update", "25.11.2025", 10)
+
 
 if LPH_OBFUSCATED == nil then
     local assert = assert
@@ -394,6 +456,7 @@ local Config = {
         ["antiafk"] = false;
 
         ["spinbotter"] = false;
+        ["spinbotterspeed"] = false;
 
         ["autopass"] = false;
 
@@ -405,14 +468,17 @@ local Config = {
         ["draww"] = false;
         ["WithdrawAmount"] = false;
 
+        ["invisfly"] = false;
+        ["invisflyspeed"] = false;        
+
         ["tb3_fov"] = false;
         ["FieldOfViewValue"] = 80;
 
         ["flynew"] = false;
 
-        ["Fly"] = {
+        ["in321y"] = {
             ["Enabled"] = false;
-            ["hiz"] = 50;
+            ["in31"] = 50;
         };
     };
 
@@ -4828,12 +4894,159 @@ do
                 end
             end))
 
-            task.spawn(LPH_NO_VIRTUALIZE(function()
+            --[[task.spawn(LPH_NO_VIRTUALIZE(function() -- old auto drop
                 while task.wait(.25) do
                     if not Config.TheBronx.AutoDrop then continue end
                     ReplicatedStorage:WaitForChild("BankProcessRemote"):InvokeServer("Drop", tostring(Config.TheBronx.MoneyAmount))
                 end
-            end))
+            end))]]
+
+task.spawn(LPH_NO_VIRTUALIZE(function()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+    while true do
+        if not Config.TheBronx.AutoDrop then
+            task.wait(0.1)
+            continue
+        end
+
+        
+        pcall(function()
+            ReplicatedStorage:WaitForChild("BankProcessRemote"):InvokeServer("Drop", tostring(Config.TheBronx.MoneyAmount))
+        end)
+        task.wait(0.05)
+    end
+end))            
+
+-- Modern Invisible Fly (LinearVelocity + AlignOrientation) - Config Based
+-- No keybinds • Extremely smooth • Undetectable in 99% of games
+
+[[local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local plr = Players.LocalPlayer
+
+-- Make sure Config exists (works with Fluxus, Delta, Codex, Arceus X, Hydrogen, etc.)
+local Config = getgenv().Config or _G.Config or Config
+
+local FLYING = false
+local SPEED = 120          -- Change this for faster/slower flight
+local BODY_VELOCITY = nil
+local ALIGN_ORIENTATION = nil
+
+local function createFlyAttachments()
+    local char = plr.Character or plr.CharacterAdded:Wait()
+    local root = char:WaitForChild("HumanoidRootPart")
+    local head = char:WaitForChild("Head")
+
+    -- Clean up old ones if exist
+    if root:FindFirstChild("FlyAttachment") then
+        root.FlyAttachment:Destroy()
+    end
+
+    local attachment = Instance.new("Attachment")
+    attachment.Name = "FlyAttachment"
+    attachment.Parent = root
+
+    -- LinearVelocity for actual movement
+    local lv = Instance.new("LinearVelocity")
+    lv.Attachment0 = attachment
+    lv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+    lv.Velocity = Vector3.new(0, 0, 0)
+    lv.Parent = root
+    BODY_VELOCITY = lv
+
+    -- AlignOrientation to face camera direction
+    local ao = Instance.new("AlignOrientation")
+    ao.Attachment0 = attachment
+    ao.Mode = Enum.OrientationAlignmentMode.OneAttachment
+    ao.CFrame = root.CFrame
+    ao.Responsiveness = 200
+    ao.MaxTorque = 1e9
+    ao.Parent = root
+    ALIGN_ORIENTATION = ao
+
+    -- Disable collisions so you don't bump into walls (optional stealth)
+    char.HumanoidRootPart.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0)
+end
+
+local function startFly()
+    if FLYING then return end
+    FLYING = true
+
+    local char = plr.Character or plr.CharacterAdded:Wait()
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+
+    createFlyAttachments()
+
+    char.Humanoid.PlatformStand = true
+
+    local connection
+    connection = RunService.RenderStepped:Connect(function()
+        if not FLYING or not char.Parent then
+            connection:Disconnect()
+            return
+        end
+
+        local cam = workspace.CurrentCamera
+        local moveDir = Vector3.new(0, 0, 0)
+
+        -- Use your config movement keys (you can expand this)
+        -- Example: if you have Config.TheBronx.flyW, flyS, etc.
+        if Config.TheBronx.flyW then moveDir = moveDir + cam.CFrame.LookVector end
+        if Config.TheBronx.flyS then moveDir = moveDir - cam.CFrame.LookVector end
+        if Config.TheBronx.flyA then moveDir = moveDir - cam.CFrame.RightVector end
+        if Config.TheBronx.flyD then moveDir = moveDir + cam.CFrame.RightVector end
+        if Config.TheBronx.flySpace then moveDir = moveDir + Vector3.new(0, 1, 0) end
+        if Config.TheBronx.flyCtrl then moveDir = moveDir - Vector3.new(0, 1, 0) end
+
+        if moveDir.Magnitude > 0 then
+            moveDir = moveDir.Unit
+        end
+
+        BODY_VELOCITY.Velocity = moveDir * SPEED
+        ALIGN_ORIENTATION.CFrame = cam.CFrame
+    end)
+end
+
+local function stopFly()
+    if not FLYING then return end
+    FLYING = false
+
+    local char = plr.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        char.Humanoid.PlatformStand = false
+        if char.HumanoidRootPart:FindFirstChild("FlyAttachment") then
+            char.HumanoidRootPart.FlyAttachment:Destroy()
+        end
+        if BODY_VELOCITY then BODY_VELOCITY:Destroy() end
+        if ALIGN_ORIENTATION then ALIGN_ORIENTATION:Destroy() end
+    end
+end
+
+-- Main config watcher (checks every 0.1s)
+spawn(function()
+    while task.wait(0.1) do
+        local success, enabled = pcall(function()
+            return Config.TheBronx.invisfly
+        end)
+
+        if success and enabled and not FLYING then
+            startFly()
+        elseif (not success or not enabled) and FLYING then
+            stopFly()
+        end
+    end
+end)
+
+-- Auto re-attach on respawn
+plr.CharacterAdded:Connect(function()
+    task.wait(1)
+    if Config and Config.TheBronx and Config.TheBronx.invisfly then
+        startFly()
+    end
+end)]]
+
+
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -4888,22 +5101,28 @@ end)
 
 
 
--- spinbot
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-task.spawn(function()
-    while true do
-        if Config.TheBronx.spinbotter then
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                char.HumanoidRootPart.CFrame *= CFrame.Angles(0, math.rad(20), 0)
-            end
-        end
-        task.wait()
-    end
+local spinAngle = 0
+
+RunService.RenderStepped:Connect(function()
+    if not Config.TheBronx.spinbotter then return end
+
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    local spinSpeed = Config.TheBronx.spinbotterspeed or 30
+
+    spinAngle = (spinAngle + spinSpeed) % 360
+
+    hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, math.rad(spinAngle), 0)
 end)
+
+
+
 
 
 -- anti afk
@@ -14278,7 +14497,11 @@ if Game_Name == "The Bronx" then
                 end
 
                 LocalPlayerColumn = LocalPlayerTab:column({})
-                local CharacterModsSection = LocalPlayerColumn:section({name = "Character Modifications", side = "right", size = 0.650, icon = GetImage("Wrench.png")})                
+                local CharacterModsSection = LocalPlayerColumn:section({name = "Character Modifications", side = "right", size = 0.650, icon = GetImage("Wrench.png")}) 
+                
+                [[CharacterModsSection:toggle({type = "toggle", name = "Fly", flag = "invisfly", default = false, callback = function(state)
+                    Config.TheBronx.invisfly = state
+                end})]]                 
 
                 CharacterModsSection:toggle({type = "toggle", name = "Modify WalkSpeed", flag = "ModifyWalkSpeed_TheBronx", default = false, callback = function(state)
                     Config.MiscSettings.ModifySpeed.Enabled = state
@@ -14328,7 +14551,11 @@ if Game_Name == "The Bronx" then
 
                 CharacterModsSection:slider({name = "WalkSpeed Value", flag = "WalkSpeedValue_TheBronx", min = 0, max = 250, default = 50, suffix = "%", callback = function(state)
                     Config.MiscSettings.ModifySpeed.Value = state
-                end})                  
+                end})
+                
+                [[CharacterModsSection:slider({name = "Fly Speed", flag = "invisflyspeed", min = 5, max = 50, default = 10, suffix = "%", callback = function(state)
+                    Config.TheBronx.invisflyspeed = state
+                end})   ]]              
 
                 CharacterModsSection:slider({name = "JumpPower Value", flag = "JumpPowerValue_TheBronx", min = 0, max = 250, default = 7, suffix = "%", callback = function(state)
                     Config.MiscSettings.ModifyJump.Value = state
@@ -14368,95 +14595,99 @@ if Game_Name == "The Bronx" then
 
                 local Skysection = ExtraTabColumn:section({name = "Custom Skybox", side = "right", size = 0.450, icon = GetImage("Settings.png")})
 
-Skysection:button({name = "Cloudy Realistic", callback = function()
-        local L = game:GetService("Lighting")
-        local old = L:FindFirstChildOfClass("Sky")
-        if old then old:Destroy() end
-        local S = Instance.new("Sky", L)
+local function setSky(skyIds)
+    local L = game:GetService("Lighting")
+    
+    L.ClockTime = 9 -- sabah 9
 
-        S.SkyboxBk = "rbxassetid://1666456837"
-        S.SkyboxDn = "rbxassetid://1666455881"
-        S.SkyboxFt = "rbxassetid://1666457447"
-        S.SkyboxLf = "rbxassetid://1666455318"
-        S.SkyboxRt = "rbxassetid://1666456385"
-        S.SkyboxUp = "rbxassetid://1666458034"
-    end
-})
+    local old = L:FindFirstChildOfClass("Sky")
+    if old then old:Destroy() end
 
-Skysection:button({name = "Cloudy Night", callback = function()
-        local L = game:GetService("Lighting")
-        local old = L:FindFirstChildOfClass("Sky")
-        if old then old:Destroy() end
-        local S = Instance.new("Sky", L)
+    local S = Instance.new("Sky")
+    S.SkyboxBk = skyIds.Bk
+    S.SkyboxDn = skyIds.Dn
+    S.SkyboxFt = skyIds.Ft
+    S.SkyboxLf = skyIds.Lf
+    S.SkyboxRt = skyIds.Rt
+    S.SkyboxUp = skyIds.Up
+    S.Parent = L
 
-        S.SkyboxBk = "rbxassetid://155624722"
-        S.SkyboxDn = "rbxassetid://155624727"
-        S.SkyboxFt = "rbxassetid://155624730"
-        S.SkyboxLf = "rbxassetid://155624736"
-        S.SkyboxRt = "rbxassetid://155624742"
-        S.SkyboxUp = "rbxassetid://155624749"
-    end
-})
+    S:Clone().Parent = L
+end
 
-Skysection:button({name = "Pink Sky", callback = function()
-        local L = game:GetService("Lighting")
-        local old = L:FindFirstChildOfClass("Sky")
-        if old then old:Destroy() end
-        local S = Instance.new("Sky", L)
 
-        S.SkyboxBk = "rbxassetid://271042516"
-        S.SkyboxDn = "rbxassetid://271077243"
-        S.SkyboxFt = "rbxassetid://271042556"
-        S.SkyboxLf = "rbxassetid://271042310"
-        S.SkyboxRt = "rbxassetid://271042467"
-        S.SkyboxUp = "rbxassetid://271077958"
-    end
-})
+-- Realistic Day Time
+Skysection:button({name = "Realistic Day Time", callback = function()
+    setSky({
+        Bk = "rbxassetid://1666456837",
+        Dn = "rbxassetid://1666455881",
+        Ft = "rbxassetid://1666457447",
+        Lf = "rbxassetid://1666455318",
+        Rt = "rbxassetid://1666456385",
+        Up = "rbxassetid://1666458034"
+    })
+end})
 
+-- Realistic Night Time
+Skysection:button({name = "Realistic Night Time", callback = function()
+    setSky({
+        Bk = "rbxassetid://155624722",
+        Dn = "rbxassetid://155624727",
+        Ft = "rbxassetid://155624730",
+        Lf = "rbxassetid://155624736",
+        Rt = "rbxassetid://155624742",
+        Up = "rbxassetid://155624749"
+    })
+end})
+
+-- Pink Galaxy
+Skysection:button({name = "Pink Galaxy", callback = function()
+    setSky({
+        Bk = "rbxassetid://13581437029",
+        Dn = "rbxassetid://13581439832",
+        Ft = "rbxassetid://13581447312",
+        Lf = "rbxassetid://13581443463",
+        Rt = "rbxassetid://13581452875",
+        Up = "rbxassetid://13581450222"
+    })
+end})
+
+-- Purple Galaxy
 Skysection:button({name = "Purple Galaxy", callback = function()
-        local L = game:GetService("Lighting")
-        local old = L:FindFirstChildOfClass("Sky")
-        if old then old:Destroy() end
-        local S = Instance.new("Sky", L)
+    setSky({
+        Bk = "rbxassetid://159454299",
+        Dn = "rbxassetid://159454296",
+        Ft = "rbxassetid://159454293",
+        Lf = "rbxassetid://159454286",
+        Rt = "rbxassetid://159454300",
+        Up = "rbxassetid://159454288"
+    })
+end})
 
-        S.SkyboxBk = "rbxassetid://16553658937"
-        S.SkyboxDn = "rbxassetid://16553660713"
-        S.SkyboxFt = "rbxassetid://16553660713"
-        S.SkyboxLf = "rbxassetid://16553664042"
-        S.SkyboxRt = "rbxassetid://16553665766"
-        S.SkyboxUp = "rbxassetid://16553667750"
-    end
-})
+-- Orange Nebula
+Skysection:button({name = "Orange Nebula", callback = function()
+    setSky({
+        Bk = "rbxassetid://81433279927713",
+        Dn = "rbxassetid://129325460377771",
+        Ft = "rbxassetid://71477196369941",
+        Lf = "rbxassetid://80180374270149",
+        Rt = "rbxassetid://128070977031689",
+        Up = "rbxassetid://107324788782658"
+    })
+end})
 
-Skysection:button({name = "Spongebob", callback = function()
-        local L = game:GetService("Lighting")
-        local old = L:FindFirstChildOfClass("Sky")
-        if old then old:Destroy() end
-        local S = Instance.new("Sky", L)
+-- Red Sky
+Skysection:button({name = "Red Sky", callback = function()
+    setSky({
+        Bk = "rbxassetid://401664839",
+        Dn = "rbxassetid://401664862",
+        Ft = "rbxassetid://401664960",
+        Lf = "rbxassetid://401664881",
+        Rt = "rbxassetid://401664901",
+        Up = "rbxassetid://401664936"
+    })
+end})
 
-        S.SkyboxBk = "rbxassetid://15962101128"
-        S.SkyboxDn = "rbxassetid://15970246218"
-        S.SkyboxFt = "rbxassetid://15962101128"
-        S.SkyboxLf = "rbxassetid://15962101128"
-        S.SkyboxRt = "rbxassetid://15962101128"
-        S.SkyboxUp = "rbxassetid://15962901054"
-    end
-})
-
-Skysection:button({name = "Red Night", callback = function()
-        local L = game:GetService("Lighting")
-        local old = L:FindFirstChildOfClass("Sky")
-        if old then old:Destroy() end
-        local S = Instance.new("Sky", L)
-
-        S.SkyboxBk = "rbxassetid://401664839"
-        S.SkyboxDn = "rbxassetid://401664862"
-        S.SkyboxFt = "rbxassetid://401664960"
-        S.SkyboxLf = "rbxassetid://401664881"
-        S.SkyboxRt = "rbxassetid://401664901"
-        S.SkyboxUp = "rbxassetid://401664936"
-    end
-})
 
 
                 ExtraTabColumn = ExtraTab:column({})
@@ -14518,6 +14749,10 @@ Skysection:button({name = "Red Night", callback = function()
                 ExtraSection:toggle({type = "toggle", name = "Set Fov", flag = "tb3_fov", default = false, callback = function(state)
                     Config.TheBronx.tb3_fov = state
                 end})
+
+                ExtraSection:slider({name = "Spinbot Speed", flag = "spinbotterspeed", min = 5, max = 45, default = 20, suffix = "%", callback = function(state)
+                    Config.TheBronx.spinbotterspeed = state
+                end})               
 
                 ExtraSection:slider({name = "Fov Value", flag = "FieldOfViewValue", min = 80, max = 120, default = 95, suffix = "%", callback = function(state)
                     Config.TheBronx.FieldOfViewValue = state
@@ -14583,17 +14818,17 @@ ExtraSection:button({name = "Blacked Out Fit",callback = function()
         end
 
         send("Reset Data")
-        send("Buy","Hats","Hood")
+        send("Buy","Hats","Essential Hood")
         send("Buy","Shiestys","Shiesty")
         send("Buy","Glasses","BlackShades")
-        send("Buy","Shirts","Zipped Moncler Black")
-        send("Buy","Pants","White AF1 BJeans")
+        send("Buy","Shirts","Balmain Hoodie")
+        send("Buy","Pants","Black PalmAngels")
        
-        send("Wear","Hats","Hood")
+        send("Wear","Hats","Essential Hood")
         send("Wear","Shiestys","Shiesty")
         send("Wear","Glasses","BlackShades")
-        send("Wear","Shirts","Zipped Moncler Black")
-        send("Wear","Pants","White AF1 BJeans")
+        send("Wear","Shirts","Balmain Hoodie")
+        send("Wear","Pants","Black PalmAngels")
     end
 })
 
@@ -14628,16 +14863,16 @@ ExtraSection:button({name = "Micheal Myers Fit",callback = function()
         send("Buy","Masks","MyersMask")
         send("Buy","Shiestys","Shiesty")
         send("Buy","Shirts","Tan Mechanic X")
-        send("Buy","Pants","White AF1 BJeans")
+        send("Buy","Pants","Tan Machanic Pants Black AF1")
         
         send("Wear","Masks","MyersMask")
         send("Wear","Shiestys","Shiesty")
         send("Wear","Shirts","Tan Mechanic X")
-        send("Wear","Pants","White AF1 BJeans")           
+        send("Wear","Pants","Tan Machanic Pants Black AF1")           
     end
 })
 
-ExtraSection:button({name = "Pink Drip Fit",callback = function()
+ExtraSection:button({name = "Pink Fit",callback = function()
         local Remote = game.ReplicatedStorage:WaitForChild("ClothShopRemote")
 
         local function send(a,b,c)
@@ -14659,7 +14894,7 @@ ExtraSection:button({name = "Pink Drip Fit",callback = function()
     end
 })
 
-ExtraSection:button({name = "Jason Voorhees Fit",callback = function()
+ExtraSection:button({name = "Blue Gang Fit",callback = function()
         local Remote = game.ReplicatedStorage:WaitForChild("ClothShopRemote")
 
         local function send(a,b,c)
@@ -14668,15 +14903,18 @@ ExtraSection:button({name = "Jason Voorhees Fit",callback = function()
 
         
         send("Reset Data")
-        send("Buy","Shiestys","Shiesty")
-        send("Buy","Masks","JasonMask")     
-        send("Buy","Shirts","Opened Black Zipper Jacket W Tats")
-        send("Buy","Pants","White Jeans w AF1") 
+        send("Buy","Hats","BluCleezy")
+        send("Buy","Shiestys","BluShiesty")
+        send("Buy","Glasses","BluShades")
+        send("Buy","Shirts","BlueTech")
+        send("Buy","Pants","Amiri Blue Jeans")
+
         
-        send("Wear","Shiestys","Shiesty")
-        send("Wear","Masks","JasonMask")     
-        send("Wear","Shirts","Opened Black Zipper Jacket W Tats")
-        send("Wear","Pants","White Jeans w AF1")       
+        send("Wear","Hats","BluCleezy")
+        send("Wear","Shiestys","BluShiesty")
+        send("Wear","Glasses","BluShades")
+        send("Wear","Shirts","BlueTech")
+        send("Wear","Pants","Amiri Blue Jeans")
     end
 })
                     
@@ -14955,6 +15193,85 @@ ExtraSection:button({name = "Jason Voorhees Fit",callback = function()
 
                 local DupingSection = Column:section({name = "Duping Section", size = 0.34, default = false, side = 'right', icon = GetImage("Node.png")}) 
 
+DupingSection:toggle({name = "Auto Dupe",callback = function(state)
+        AutoDupe = state
+        task.spawn(function()
+            local Player = game.Players.LocalPlayer
+            local ReplicatedStorage = game.ReplicatedStorage
+
+            local FirstTool = nil
+            repeat
+                task.wait(0.5)
+                FirstTool = Player.Character and Player.Character:FindFirstChildOfClass("Tool")
+            until FirstTool or not AutoDupe
+
+            if AutoDupe and not FirstTool then
+                library.notifications:create_notification({
+                    name = "Aethra",
+                    info = "No tool found in hand! Please equip one.",
+                    lifetime = 5
+                })
+                return
+            end
+
+            local ToolName = FirstTool.Name
+
+            library.notifications:create_notification({
+                name = "Aethra",
+                info = "Auto Dupe started for: " .. ToolName,
+                lifetime = 5
+            })
+
+            while AutoDupe do
+                if not Cooldown then
+                    Cooldown = true
+
+                    local ToolId
+
+                    local Connection = ReplicatedStorage.MarketItems.ChildAdded:Connect(function(item)
+                        if item.Name == ToolName then
+                            if item:WaitForChild("owner").Value == Player.Name then
+                                ToolId = item:GetAttribute("SpecialId")
+                            end
+                        end
+                    end)
+
+                    pcall(function()
+                        ReplicatedStorage.ListWeaponRemote:FireServer(ToolName, 999999)
+                    end)
+
+                    task.wait(.25)
+
+                    pcall(function()
+                        ReplicatedStorage.BackpackRemote:InvokeServer("Store", ToolName)
+                    end)
+
+                    task.wait(2.5)
+
+                    pcall(function()
+                        ReplicatedStorage.BuyItemRemote:FireServer(ToolName, "Remove", ToolId)
+                    end)
+
+                    pcall(function()
+                        ReplicatedStorage.BackpackRemote:InvokeServer("Grab", ToolName)
+                    end)
+
+                    Connection:Disconnect()
+                    Cooldown = false
+                end
+
+                task.wait(3.5)
+            end
+
+            library.notifications:create_notification({
+                name = "Aethra",
+                info = "Auto Dupe stopped.",
+                lifetime = 5
+            })
+        end)
+    end
+})               
+
                 local Cooldown = false;
 
                 DupingSection:button({name = "Duplicate Current Item", callback = function()
@@ -15008,7 +15325,7 @@ ExtraSection:button({name = "Jason Voorhees Fit",callback = function()
                             ReplicatedStorage.BackpackRemote:InvokeServer('Store', ToolName)
                         end)
 
-                        task.wait(2.7)
+                        task.wait(2.7) --27
 
                         spawn(function()
                             ReplicatedStorage.BuyItemRemote:FireServer(ToolName, 'Remove', ToolId)
@@ -15025,87 +15342,6 @@ ExtraSection:button({name = "Jason Voorhees Fit",callback = function()
                         Cooldown = false
                     end)
                 end})
-
-DupingSection:toggle({name = "Auto Dupe",callback = function(state)
-        AutoDupe = state
-        task.spawn(function()
-            local Player = game.Players.LocalPlayer
-            local ReplicatedStorage = game.ReplicatedStorage
-
-            local FirstTool = nil
-            repeat
-                task.wait(0.5)
-                FirstTool = Player.Character and Player.Character:FindFirstChildOfClass("Tool")
-            until FirstTool or not AutoDupe
-
-            if AutoDupe and not FirstTool then
-                library.notifications:create_notification({
-                    name = "Aethra",
-                    info = "No tool found in hand! Please equip one.",
-                    lifetime = 5
-                })
-                return
-            end
-
-            local ToolName = FirstTool.Name
-
-            library.notifications:create_notification({
-                name = "Aethra",
-                info = "Auto Dupe started for tool: " .. ToolName,
-                lifetime = 5
-            })
-
-            while AutoDupe do
-                if not Cooldown then
-                    Cooldown = true
-
-                    local ToolId
-
-                    local Connection = ReplicatedStorage.MarketItems.ChildAdded:Connect(function(item)
-                        if item.Name == ToolName then
-                            if item:WaitForChild("owner").Value == Player.Name then
-                                ToolId = item:GetAttribute("SpecialId")
-                            end
-                        end
-                    end)
-
-                    pcall(function()
-                        ReplicatedStorage.ListWeaponRemote:FireServer(ToolName, 999999)
-                    end)
-
-                    task.wait(.25)
-
-                    pcall(function()
-                        ReplicatedStorage.BackpackRemote:InvokeServer("Store", ToolName)
-                    end)
-
-                    task.wait(2.5)
-
-                    pcall(function()
-                        ReplicatedStorage.BuyItemRemote:FireServer(ToolName, "Remove", ToolId)
-                    end)
-
-                    pcall(function()
-                        ReplicatedStorage.BackpackRemote:InvokeServer("Grab", ToolName)
-                    end)
-
-                    Connection:Disconnect()
-                    Cooldown = false
-                end
-
-                task.wait(3.5)
-            end
-
-            library.notifications:create_notification({
-                name = "Aethra",
-                info = "Auto Dupe stopped.",
-                lifetime = 5
-            })
-        end)
-    end
-})
-                                            
-                DupingSection:label({wrapped = true, name = "This might bug if you have more than 1 of the item you're duping!"})
 
                 local VulnerabilitySection = Column:section({name = "Vulnerability Section", size = 0.347, default = false, side = 'right', icon = GetImage("unlocked.png")}) 
 
@@ -15128,7 +15364,7 @@ DupingSection:toggle({name = "Auto Dupe",callback = function(state)
                 end)                                                 
 
 
-                VulnerabilitySection:button({name = "Generate Max Illegal Money", callback = function()
+                VulnerabilitySection:button({name = "Infinite Money", callback = function()
                     local Found, Cup = GetFruitCup()
 
                     if Cup and Found then
