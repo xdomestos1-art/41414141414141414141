@@ -23,14 +23,6 @@ frame.AnchorPoint = Vector2.new(0, 0)
 frame.Parent = gui
 frame.Visible = false
 
-
-local shadow = Instance.new("ImageLabel", frame)
-shadow.Size = UDim2.new(1, 30, 1, 30)
-shadow.Position = UDim2.new(0.5, -15, 0.5, -15)
-shadow.Image = "rbxassetid://6015897843"
-shadow.ImageTransparency = 0.5
-shadow.BackgroundTransparency = 1
-
 -- Title
 local title = Instance.new("TextLabel")
 title.Parent = frame
@@ -4921,7 +4913,7 @@ end))
 -- Modern Invisible Fly (LinearVelocity + AlignOrientation) - Config Based
 -- No keybinds • Extremely smooth • Undetectable in 99% of games
 
-[[local Players = game:GetService("Players")
+--[[local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local plr = Players.LocalPlayer
 
@@ -14499,7 +14491,7 @@ if Game_Name == "The Bronx" then
                 LocalPlayerColumn = LocalPlayerTab:column({})
                 local CharacterModsSection = LocalPlayerColumn:section({name = "Character Modifications", side = "right", size = 0.650, icon = GetImage("Wrench.png")}) 
                 
-                [[CharacterModsSection:toggle({type = "toggle", name = "Fly", flag = "invisfly", default = false, callback = function(state)
+                --[[CharacterModsSection:toggle({type = "toggle", name = "Fly", flag = "invisfly", default = false, callback = function(state)
                     Config.TheBronx.invisfly = state
                 end})]]                 
 
@@ -14553,9 +14545,9 @@ if Game_Name == "The Bronx" then
                     Config.MiscSettings.ModifySpeed.Value = state
                 end})
                 
-                [[CharacterModsSection:slider({name = "Fly Speed", flag = "invisflyspeed", min = 5, max = 50, default = 10, suffix = "%", callback = function(state)
+                --[[CharacterModsSection:slider({name = "Fly Speed", flag = "invisflyspeed", min = 5, max = 50, default = 10, suffix = "%", callback = function(state)
                     Config.TheBronx.invisflyspeed = state
-                end})   ]]              
+                end})]]                 
 
                 CharacterModsSection:slider({name = "JumpPower Value", flag = "JumpPowerValue_TheBronx", min = 0, max = 250, default = 7, suffix = "%", callback = function(state)
                     Config.MiscSettings.ModifyJump.Value = state
