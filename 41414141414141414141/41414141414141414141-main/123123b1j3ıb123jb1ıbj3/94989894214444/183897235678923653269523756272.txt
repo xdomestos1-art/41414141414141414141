@@ -15085,9 +15085,9 @@ ExtraSection:button({name = "Blue Gang Fit",callback = function()
                     Config.TheBronx.Farms.FarmConstructionJob = state
                 end})
 
-                FarmingSection:toggle({type = "toggle", name = "Auto Farm Bank Robbery", flag = "FarmBank_TheBronx", default = false, callback = function(state)
+                --[[FarmingSection:toggle({type = "toggle", name = "Auto Farm Bank Robbery", flag = "FarmBank_TheBronx", default = false, callback = function(state)
                     Config.TheBronx.Farms.FarmBank = state
-                end})
+                end})]]
 
                 FarmingSection:toggle({type = "toggle", name = "Auto Farm House Robbery", flag = "FarmHouses_TheBronx", default = false, callback = function(state)
                     Config.TheBronx.Farms.FarmHouses = state
@@ -15335,6 +15335,8 @@ DupingSection:toggle({name = "Auto Dupe",callback = function(state)
                     end)
                 end})
 
+                DupingSection:label({wrapped = true, name = "Auto Dupe Can Take Some Time To Fill Your Inventory."})
+
                 local VulnerabilitySection = Column:section({name = "Vulnerability Section", size = 0.347, default = false, side = 'right', icon = GetImage("unlocked.png")}) 
 
                 local GetFruitCup = LPH_NO_VIRTUALIZE(function()
@@ -15501,7 +15503,7 @@ DupingSection:toggle({name = "Auto Dupe",callback = function(state)
                     pcall(DeleteSecretUI)
                 end})
 
-                VulnerabilitySection:label({wrapped = true, name = "Money Generator takes around 3 minutes, and can take longer if some items are not in stock. You will need around 5K to do this."})
+                VulnerabilitySection:label({wrapped = true, name = "Infinite Money Takes Around 2 Minutes However It Can Take Longer Depending."})
 
                 local KillAuraSection = Column:section({name = "Kill Aura Section", size = 0.275, default = false, side = 'right', icon = GetImage("Bullet.png")}) 
 
