@@ -71,7 +71,7 @@ end
 -- Your Notifications
 notify("Aethra", "Loading…", 12)
 task.wait(3)
-notify("Last Update", "25.11.2025", 10)
+notify("Last Update", "11.27.2025\n Check Discord For Logs", 10)
 
 
 if LPH_OBFUSCATED == nil then
@@ -461,7 +461,7 @@ local Config = {
         ["WithdrawAmount"] = false;
 
         ["invisfly"] = false;
-        ["invisflyspeed"] = false;        
+        ["invisflyspeed"] = 50;        
 
         ["tb3_fov"] = false;
         ["FieldOfViewValue"] = 80;
@@ -4458,17 +4458,50 @@ do
                     LocalPlayer.PlayerGui:FindFirstChild("BloodGui").Enabled = not Config.TheBronx.PlayerModifications["DisableBloodEffects"]
                 end
 
-                if LocalPlayer.PlayerGui:FindFirstChild("JumpDebounce") and LocalPlayer.PlayerGui:FindFirstChild("JumpDebounce"):FindFirstChild("LocalScript") then
-                    LocalPlayer.PlayerGui:FindFirstChild("JumpDebounce").LocalScript.Disabled = Config.TheBronx.PlayerModifications.NoJumpCooldown
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local infJumpDebounce = false
+local jumpCooldown = 0.5 
+local lastJumpTime = 0
+local jumpConnection 
+
+if jumpConnection then
+    jumpConnection:Disconnect()
+    jumpConnection = nil
+end
+
+if Config.TheBronx.PlayerModifications.NoJumpCooldown then
+    jumpConnection = UserInputService.JumpRequest:Connect(function()
+        local now = tick()
+        if not infJumpDebounce and (now - lastJumpTime >= jumpCooldown) then
+            local char = LocalPlayer.Character
+            if char then
+                local humanoid = char:FindFirstChildWhichIsA("Humanoid")
+                if humanoid then
+                    infJumpDebounce = true
+                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                    lastJumpTime = now
+                    task.wait(0.01) -- kısa debounce
+                    infJumpDebounce = false
                 end
+            end
+        end
+    end)
+else
+
+    if jumpConnection then
+        jumpConnection:Disconnect()
+        jumpConnection = nil
+    end
+end
+                
+
 
                 if LocalPlayer.PlayerGui:FindFirstChild("CameraTexts") and LocalPlayer.PlayerGui:FindFirstChild("CameraTexts"):FindFirstChild("LocalScript") then
                     LocalPlayer.PlayerGui:FindFirstChild("CameraTexts").Enabled = not Config.TheBronx.PlayerModifications.DisableJail
                     LocalPlayer.PlayerGui:FindFirstChild("CameraTexts").LocalScript.Disabled = Config.TheBronx.PlayerModifications.DisableJail
-                end
-
-                if LocalPlayer.PlayerGui:FindFirstChild("JumpDebounce") and LocalPlayer.PlayerGui:FindFirstChild("JumpDebounce"):FindFirstChild("LocalScript") then
-                    LocalPlayer.PlayerGui:FindFirstChild("JumpDebounce").LocalScript.Disabled = Config.TheBronx.PlayerModifications.NoJumpCooldown
                 end
 
                 if LocalPlayer.PlayerGui:FindFirstChild("RentGui") and LocalPlayer.PlayerGui:FindFirstChild("RentGui"):FindFirstChild("LocalScript") then
@@ -4910,136 +4943,94 @@ task.spawn(LPH_NO_VIRTUALIZE(function()
     end
 end))            
 
--- Modern Invisible Fly (LinearVelocity + AlignOrientation) - Config Based
--- No keybinds • Extremely smooth • Undetectable in 99% of games
-
---[[local Players = game:GetService("Players")
+-- fly
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local plr = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
--- Make sure Config exists (works with Fluxus, Delta, Codex, Arceus X, Hydrogen, etc.)
-local Config = getgenv().Config or _G.Config or Config
+local LocalPlayer = Players.LocalPlayer
+local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
+local humanoid = char:WaitForChild("Humanoid")
 
-local FLYING = false
-local SPEED = 120          -- Change this for faster/slower flight
-local BODY_VELOCITY = nil
-local ALIGN_ORIENTATION = nil
+local flyActive = false
+local flyVel = Instance.new("BodyVelocity")
+flyVel.MaxForce = Vector3.new(0,0,0)
+flyVel.Velocity = Vector3.zero
+flyVel.Parent = hrp
 
-local function createFlyAttachments()
-    local char = plr.Character or plr.CharacterAdded:Wait()
-    local root = char:WaitForChild("HumanoidRootPart")
-    local head = char:WaitForChild("Head")
+local speed = 50
+local keys = {W=false,A=false,S=false,D=false,Space=false,LShift=false}
 
-    -- Clean up old ones if exist
-    if root:FindFirstChild("FlyAttachment") then
-        root.FlyAttachment:Destroy()
+-- Input tracking
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if keys[input.KeyCode.Name] ~= nil then
+        keys[input.KeyCode.Name] = true
     end
-
-    local attachment = Instance.new("Attachment")
-    attachment.Name = "FlyAttachment"
-    attachment.Parent = root
-
-    -- LinearVelocity for actual movement
-    local lv = Instance.new("LinearVelocity")
-    lv.Attachment0 = attachment
-    lv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-    lv.Velocity = Vector3.new(0, 0, 0)
-    lv.Parent = root
-    BODY_VELOCITY = lv
-
-    -- AlignOrientation to face camera direction
-    local ao = Instance.new("AlignOrientation")
-    ao.Attachment0 = attachment
-    ao.Mode = Enum.OrientationAlignmentMode.OneAttachment
-    ao.CFrame = root.CFrame
-    ao.Responsiveness = 200
-    ao.MaxTorque = 1e9
-    ao.Parent = root
-    ALIGN_ORIENTATION = ao
-
-    -- Disable collisions so you don't bump into walls (optional stealth)
-    char.HumanoidRootPart.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0)
-end
-
-local function startFly()
-    if FLYING then return end
-    FLYING = true
-
-    local char = plr.Character or plr.CharacterAdded:Wait()
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-
-    createFlyAttachments()
-
-    char.Humanoid.PlatformStand = true
-
-    local connection
-    connection = RunService.RenderStepped:Connect(function()
-        if not FLYING or not char.Parent then
-            connection:Disconnect()
-            return
-        end
-
-        local cam = workspace.CurrentCamera
-        local moveDir = Vector3.new(0, 0, 0)
-
-        -- Use your config movement keys (you can expand this)
-        -- Example: if you have Config.TheBronx.flyW, flyS, etc.
-        if Config.TheBronx.flyW then moveDir = moveDir + cam.CFrame.LookVector end
-        if Config.TheBronx.flyS then moveDir = moveDir - cam.CFrame.LookVector end
-        if Config.TheBronx.flyA then moveDir = moveDir - cam.CFrame.RightVector end
-        if Config.TheBronx.flyD then moveDir = moveDir + cam.CFrame.RightVector end
-        if Config.TheBronx.flySpace then moveDir = moveDir + Vector3.new(0, 1, 0) end
-        if Config.TheBronx.flyCtrl then moveDir = moveDir - Vector3.new(0, 1, 0) end
-
-        if moveDir.Magnitude > 0 then
-            moveDir = moveDir.Unit
-        end
-
-        BODY_VELOCITY.Velocity = moveDir * SPEED
-        ALIGN_ORIENTATION.CFrame = cam.CFrame
-    end)
-end
-
-local function stopFly()
-    if not FLYING then return end
-    FLYING = false
-
-    local char = plr.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        char.Humanoid.PlatformStand = false
-        if char.HumanoidRootPart:FindFirstChild("FlyAttachment") then
-            char.HumanoidRootPart.FlyAttachment:Destroy()
-        end
-        if BODY_VELOCITY then BODY_VELOCITY:Destroy() end
-        if ALIGN_ORIENTATION then ALIGN_ORIENTATION:Destroy() end
-    end
-end
-
--- Main config watcher (checks every 0.1s)
-spawn(function()
-    while task.wait(0.1) do
-        local success, enabled = pcall(function()
-            return Config.TheBronx.invisfly
-        end)
-
-        if success and enabled and not FLYING then
-            startFly()
-        elseif (not success or not enabled) and FLYING then
-            stopFly()
-        end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if keys[input.KeyCode.Name] ~= nil then
+        keys[input.KeyCode.Name] = false
     end
 end)
 
--- Auto re-attach on respawn
-plr.CharacterAdded:Connect(function()
-    task.wait(1)
-    if Config and Config.TheBronx and Config.TheBronx.invisfly then
-        startFly()
+-- Character respawn
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    char = newChar
+    hrp = char:WaitForChild("HumanoidRootPart")
+    humanoid = char:WaitForChild("Humanoid")
+    flyVel:Destroy()
+    flyVel = Instance.new("BodyVelocity")
+    flyVel.MaxForce = Vector3.new(0,0,0)
+    flyVel.Velocity = Vector3.zero
+    flyVel.Parent = hrp
+end)
+
+-- Fly toggle
+function ToggleFly()
+    flyActive = not flyActive
+    if flyActive then
+        flyVel.MaxForce = Vector3.new(4000,4000,4000)
+        if humanoid then humanoid.PlatformStand = true end
+    else
+        flyVel.MaxForce = Vector3.new(0,0,0)
+        flyVel.Velocity = Vector3.zero
+        if humanoid then humanoid.PlatformStand = false end
     end
-end)]]
+end
+
+-- Movement loop
+RunService.RenderStepped:Connect(function()
+    if not flyActive or not hrp then
+        if flyVel then flyVel.Velocity = Vector3.zero end
+        return
+    end
+
+    local moveDir = Vector3.zero
+    local cam = Workspace.CurrentCamera
+
+    if keys.W then moveDir += cam.CFrame.LookVector end
+    if keys.S then moveDir -= cam.CFrame.LookVector end
+    if keys.A then moveDir -= cam.CFrame.RightVector end
+    if keys.D then moveDir += cam.CFrame.RightVector end
+    if keys.Space then moveDir += Vector3.new(0,1,0) end
+    if keys.LShift then moveDir -= Vector3.new(0,1,0) end
+
+    if moveDir.Magnitude > 0 then
+        moveDir = moveDir.Unit
+    end
+
+    if flyVel then
+        flyVel.Velocity = moveDir * speed
+    end
+end)
 
 
+--flyend
 
+--autopass
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TextChatService = game:GetService("TextChatService")
@@ -5089,10 +5080,9 @@ RunService.RenderStepped:Connect(function()
         end
     end
 end)
+--autopass end
 
-
-
-
+--spinbot
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -5112,7 +5102,7 @@ RunService.RenderStepped:Connect(function()
 
     hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, math.rad(spinAngle), 0)
 end)
-
+--spinbot end
 
 
 
@@ -5152,7 +5142,7 @@ if Config.TheBronx.antiafk then
         end
     end)
 end
-
+--anti afk end
 
             task.spawn(LPH_NO_VIRTUALIZE(function()
                 while task.wait(.25) do
@@ -5628,7 +5618,7 @@ end
                 end
             end)
 
-            getgenv().Teleport = LPH_NO_VIRTUALIZE(function(CFrame, DontUi)
+        --[[getgenv().Teleport = LPH_NO_VIRTUALIZE(function(CFrame, DontUi)
                 if not LocalPlayer.Character then return end
                 if not LocalPlayer.Character:FindFirstChild("Humanoid") then return end
 
@@ -5636,7 +5626,7 @@ end
                     HideUI("teleporting.\nplease wait.")
                 end]]
                 
-                LocalPlayer.Character:FindFirstChild("Humanoid"):ChangeState(0)
+                --[[LocalPlayer.Character:FindFirstChild("Humanoid"):ChangeState(0)
 
                 repeat task.wait() until not LocalPlayer:GetAttribute("LastACPos")
                 LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame
@@ -5648,8 +5638,36 @@ end
                     DeleteSecretUI()
                 end]]
 
-                return true
-            end)
+                --[[return true
+            end)]]
+
+getgenv().Teleport = LPH_NO_VIRTUALIZE(function(CF, DontUi)
+    if not LocalPlayer.Character then return end
+    local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
+    local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+    if not hum or not hrp then return end
+    hum.WalkSpeed = 0
+    hum.JumpPower = 0
+    hum.AutoRotate = false
+    task.wait(0.5)
+
+    hum:ChangeState(0)
+
+    repeat task.wait() until not LocalPlayer:GetAttribute("LastACPos")
+
+    hrp.CFrame = CF
+
+    task.wait(0.5)
+
+    hum:ChangeState(2)
+    hum.WalkSpeed = 16
+    hum.JumpPower = 50
+    hum.AutoRotate = true
+
+    return true
+end)
+           
 
             GetWorkingSafe = LPH_NO_VIRTUALIZE(function()
                 local House; local Safe;
@@ -10112,7 +10130,7 @@ if not Mobile then
         end 
 
         function library:init_config(window) 
-            window:seperator({name = "Settings"})
+            window:seperator({name = ""})
             local main, playerlist = window:tab({name = "Configs", tabs = {"Main", "Playerlist"}})
             
             local column = main:column({})
@@ -14114,7 +14132,7 @@ if not Mobile then
 
         function library:init_config(window) 
             local text;
-            window:seperator({name = "Settings"})
+            window:seperator({name = ""})
             local main = window:tab({name = "Configs", tabs = {"Main"}})
             
             local column = main:column({})
@@ -14302,11 +14320,11 @@ if not Mobile then
     end
 -- \\ Script
 
-local window = library:window({name = "Aeth", suffix = "ra", gameInfo = string.format("Aethra : %s", Game_Name:lower())})
+local window = library:window({name = "Aethra", suffix = "", gameInfo = string.format(" Best Tha Bronx 3 Script ", Game_Name:lower())})
 
 if Game_Name == "The Bronx" then
-    window:seperator({name = "Game"}) do
-        local LocalPlayerTab, PlayersTab, PurchaseGunTab, ExtraTab, MiscTab, SafeTab = window:tab({name = "Main", tabs = {"Local Player", "Players", "Teleports", "Extra", "Misc", "Safe"}, icon = GetImage("World.png")}) do
+    window:seperator({name = ""}) do
+        local LocalPlayerTab, PlayersTab, PurchaseGunTab, ExtraTab, MiscTab, SafeTab = window:tab({name = "General", tabs = {"Local Player", "Players", "Teleports", "Extra", "Misc", "Safe"}, icon = GetImage("World.png")}) do
             do -- \\ Safe Tab
                 local SafeItemColumn = SafeTab:column({})
 
@@ -14489,7 +14507,7 @@ if Game_Name == "The Bronx" then
                 end
 
                 LocalPlayerColumn = LocalPlayerTab:column({})
-                local CharacterModsSection = LocalPlayerColumn:section({name = "Character Modifications", side = "right", size = 0.650, icon = GetImage("Wrench.png")}) 
+                local CharacterModsSection = LocalPlayerColumn:section({name = "Character Modifications", side = "right", size = 0.800, icon = GetImage("Wrench.png")}) 
                 
                 --[[CharacterModsSection:toggle({type = "toggle", name = "Fly", flag = "invisfly", default = false, callback = function(state)
                     Config.TheBronx.invisfly = state
@@ -14680,10 +14698,155 @@ Skysection:button({name = "Red Sky", callback = function()
     })
 end})
 
-
-
                 ExtraTabColumn = ExtraTab:column({})
                 local ExtraSection = ExtraTabColumn:section({name = "Extra Settings", side = "left", size = 1.0135})   
+
+--[[ExtraSection:button({
+    name = "Steal, Bring Nearest Car",
+    callback = function()
+        local player = game:GetService("Players").LocalPlayer
+        local char = player.Character or player.CharacterAdded:Wait()
+        local hrp = char:WaitForChild("HumanoidRootPart")
+        local hum = char:FindFirstChildWhichIsA("Humanoid")
+
+        local nearestCar
+        local nearestDist = math.huge
+
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj:FindFirstChild("DriveSeat") then
+                local seat = obj:FindFirstChild("DriveSeat")
+                if seat and not seat.Occupant then
+                    local primary = obj.PrimaryPart or seat
+                    if primary then
+                        local dist = (primary.Position - hrp.Position).Magnitude
+                        if dist < nearestDist then
+                            nearestDist = dist
+                            nearestCar = obj
+                        end
+                    end
+                end
+            end
+        end
+
+        if not nearestCar then
+            library.notifications:create_notification({
+                name = "Aethra",
+                info = "No Empty Car Found Near You!",
+                lifetime = 5
+            })
+            return
+        end
+
+        local seat = nearestCar:FindFirstChild("DriveSeat")
+        if not seat then return end
+
+        hum.Sit = false
+        task.wait(0.1)
+        hum:MoveTo(seat.Position + Vector3.new(0, 2, 0))
+        task.wait(0.15)
+        seat:Sit(hum)
+
+        local primary = nearestCar.PrimaryPart or seat
+        local TweenService = game:GetService("TweenService")
+        local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Linear)
+        local goal = {CFrame = hrp.CFrame + Vector3.new(0,5,0)}
+        local tween = TweenService:Create(primary, tweenInfo, goal)
+        tween:Play()
+
+        library.notifications:create_notification({
+            name = "Aethra",
+            info = "Successfully Stole Car!",
+            lifetime = 5
+        })
+    end
+})
+Steal Car ennd]]
+
+-- bring car (working)
+local function GetNearestCar(hrp)
+    local CivCars = workspace:FindFirstChild("CivCars")
+    if not CivCars then return nil end
+
+    local nearestCar = nil
+    local nearestDist = math.huge
+
+    for _, car in ipairs(CivCars:GetChildren()) do
+        if not car:IsA("Model") then continue end
+
+        local seat = car:FindFirstChild("DriveSeat")
+        if not seat then continue end
+
+        -- zaten biri oturuyorsa geç
+        if seat.Occupant then continue end
+
+        -- PrimaryPart fix
+        if not car.PrimaryPart then
+            local body = car:FindFirstChild("Body")
+            if body and body:FindFirstChild("#Weight") then
+                car.PrimaryPart = body["#Weight"]
+            else
+                car.PrimaryPart = seat
+            end
+        end
+
+        if not car.PrimaryPart then continue end
+
+        local dist = (car.PrimaryPart.Position - hrp.Position).Magnitude
+        if dist < nearestDist then
+            nearestDist = dist
+            nearestCar = car
+        end
+    end
+
+    return nearestCar
+end
+
+
+ExtraSection:button({
+    name = "Steal, Bring Nearest Car",
+    callback = function()
+        local Players = game:GetService("Players")
+        local Player = Players.LocalPlayer
+        local char = Player.Character
+        if not char then return end
+        
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildWhichIsA("Humanoid")
+        if not hrp or not hum then return end
+
+        local car = GetNearestCar(hrp)
+
+        if not car then
+            library.notifications:create_notification({
+                name = "Aethra",
+                info = "Couldn't Find An Available Car!",
+                lifetime = 5
+            })
+            return
+        end
+
+        local seat = car:FindFirstChild("DriveSeat")
+        if not seat then return end
+
+        -- Usable bypass
+        seat:Sit(hum)
+        task.wait(0.1)
+        hum.Sit = false
+        hum.Jump = true
+
+        car:SetPrimaryPartCFrame(
+            hrp.CFrame * CFrame.new(0, 0, -6)
+        )
+
+        library.notifications:create_notification({
+            name = "Aethra",
+            info = "Car Delivered!",
+            lifetime = 5
+        })
+    end
+})
+-- end bring car
+
                            
                 ExtraSection:button({name = "Hide Identity.", callback = function()
                 local Player = game.Players.LocalPlayer
@@ -15015,6 +15178,7 @@ ExtraSection:button({name = "Blue Gang Fit",callback = function()
                     Config.TheBronx.PlayerUtilities.SpectatePlayer = state
                 end})
 
+
                 PlayerOptionsSection:toggle({type = "toggle", name = "Bring Player", flag = "BringPlayer_TheBronx", default = false, callback = function(state)
                     Config.TheBronx.PlayerUtilities.BringingPlayer = state
                 end})
@@ -15031,9 +15195,72 @@ ExtraSection:button({name = "Blue Gang Fit",callback = function()
                     Config.TheBronx.PlayerUtilities.AutoRagdoll = state
                 end})
 
+
                 PlayerOptionsSection:button({name = "Teleport To Player", callback = function()
                     task.spawn(Teleport, Players[Config.TheBronx.PlayerUtilities.SelectedPlayer].Character.HumanoidRootPart.CFrame)
                 end})
+
+PlayerOptionsSection:button({
+    name = "Show Target Money",
+    callback = function()
+        local targetName = Config.TheBronx.PlayerUtilities.SelectedPlayer
+        if not targetName then
+            library.notifications:create_notification({
+                name = "Aethra",
+                info = "No Player Selected!",
+                lifetime = 5
+            })
+            return
+        end
+
+        local target = game:GetService("Players"):FindFirstChild(targetName)
+        if not target then
+            library.notifications:create_notification({
+                name = "Aethra",
+                info = "Player Not Found!",
+                lifetime = 5
+            })
+            return
+        end
+
+        local stored = target:FindFirstChild("stored")
+        if not stored then
+            library.notifications:create_notification({
+                name = "Aethra",
+                info = "No Stored Folder Found!",
+                lifetime = 5
+            })
+            return
+        end
+
+        local bank = stored:FindFirstChild("Bank")
+        local filthy = stored:FindFirstChild("FilthyStack")
+        local money = stored:FindFirstChild("Money")
+
+        local bankValue = bank and bank.Value or "Not Found"
+        local filthyValue = filthy and filthy.Value or "Not Found"
+        local moneyValue = money and money.Value or "Not Found"
+
+        library.notifications:create_notification({
+            name = "Aethra",
+            info = "Bank: " .. bankValue,
+            lifetime = 5
+        })
+
+        library.notifications:create_notification({
+            name = "Aethra",
+            info = "FilthyStack: " .. filthyValue,
+            lifetime = 5
+        })
+
+        library.notifications:create_notification({
+            name = "Aethra",
+            info = "Money: " .. moneyValue,
+            lifetime = 5
+        })
+    end
+})
+-- view bank                               
 
                 PlayerOptionsSection:button({name = "Down Player - Hold Gun", callback = function(state)
                     pcall(kill_gun, Config.TheBronx.PlayerUtilities.SelectedPlayer, "HumanoidRootPart", (Players[Config.TheBronx.PlayerUtilities.SelectedPlayer].Character.Humanoid.Health - 5))
@@ -15079,7 +15306,7 @@ ExtraSection:button({name = "Blue Gang Fit",callback = function()
             do -- \\ Misc Tab
                 local Column = MiscTab:column({})
 
-                local FarmingSection = Column:section({name = "Farming", size = 0.415, default = false, side = 'left', icon = GetImage("Wheatt.png")})
+                local FarmingSection = Column:section({name = "Farming", size = 0.500, default = false, side = 'left', icon = GetImage("Wheatt.png")})
 
                 FarmingSection:toggle({type = "toggle", name = "Auto Farm Construction", flag = "FarmConstruction_TheBronx", default = false, callback = function(state)
                     Config.TheBronx.Farms.FarmConstructionJob = state
@@ -15101,75 +15328,13 @@ ExtraSection:button({name = "Blue Gang Fit",callback = function()
                     Config.TheBronx.Farms.FarmTrash = state
                 end})
 
-                local ManualFarmSections = Column:section({name = "Manual Farms", size = 0.325, default = false, side = 'left', icon = GetImage("Pickkaxe.png")}) 
-
-                ManualFarmSections:toggle({type = "toggle", name = "Auto Collect Dropped Cash", flag = "FarmDroppedMoney_TheBronx", default = false, callback = function(state)
+                FarmingSection:toggle({type = "toggle", name = "Auto Collect Dropped Cash", flag = "FarmDroppedMoney_TheBronx", default = false, callback = function(state)
                     Config.TheBronx.Farms.CollectDroppedMoney = state
                 end})
 
-                ManualFarmSections:toggle({type = "toggle", name = "Auto Collect Dropped Bags", flag = "FarmDroppedLoot_TheBronx", default = false, callback = function(state)
+                FarmingSection:toggle({type = "toggle", name = "Auto Collect Dropped Bags", flag = "FarmDroppedLoot_TheBronx", default = false, callback = function(state)
                     Config.TheBronx.Farms.CollectDroppedLoot = state
                 end})
-
-                ManualFarmSections:button({name = "Clean All Filthy Money", callback = LPH_NO_VIRTUALIZE(function()
-                    if LocalPlayer.stored.FilthyStack.Value == 0 then 
-                        return library.notifications:create_notification({
-                            name = "Aethra",
-                            info = `You have no fucking money poor fuck!`,
-                            lifetime = 7.5
-                        })
-                    end
-        
-                    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
-                    if not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character:FindFirstChild("Humanoid").Health == 0 then return end
-        
-                    local Cleaner = GetGoodCleaner()
-                    
-                    if not Cleaner then
-                        return library.notifications:create_notification({
-                            name = "Aethra",
-                            info = `Could not find a valid cleaner!`,
-                            lifetime = 7.5
-                        })
-                    end
-        
-                    Teleport(Cleaner.WorldPivot)
-        
-                    task.wait(0.4)
-        
-                    fireproximityprompt(Cleaner:FindFirstChild("CashPrompt", true))
-        
-                    repeat task.wait() until Cleaner:FindFirstChild("On", true).Color == Color3.fromRGB(74, 156, 69)
-        
-                    task.wait(0.5)
-        
-                    fireproximityprompt(Cleaner:FindFirstChild("CashPrompt", true))
-                    
-                    task.wait(0.25)
-        
-                    Teleport(Cleaner.WorldPivot)
-        
-                    task.wait(0.4)
-        
-                    repeat task.wait() until LocalPlayer.Backpack:FindFirstChild("MoneyReady")
-        
-                    LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack["MoneyReady"])
-        
-                    repeat task.wait(0.1) fireproximityprompt(Cleaner:FindFirstChild("GrabPrompt", true)) until not LocalPlayer.Character:FindFirstChild("MoneyReady")
-                    
-                    repeat task.wait()
-                    until LocalPlayer.Backpack:FindFirstChild("BagOfMoney")
-        
-                    Teleport(CFrame.new(-222.29, 283.81, -1200.90))
-        
-                    task.wait(0.4)
-        
-                    LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack["BagOfMoney"])
-        
-                    task.wait(1)
-        
-                    fireproximityprompt(Workspace.ATMMoney.Prompt)
-                end)})
 
                 local FarmSettingsSection = Column:section({name = "Farming Settings", size = 0.225, default = false, side = 'left', Icon = GetImage("Settings.png")}) 
 
@@ -15337,7 +15502,7 @@ DupingSection:toggle({name = "Auto Dupe",callback = function(state)
 
                 DupingSection:label({wrapped = true, name = "Auto Dupe Can Take Some Time To Fill Your Inventory."})
 
-                local VulnerabilitySection = Column:section({name = "Vulnerability Section", size = 0.347, default = false, side = 'right', icon = GetImage("unlocked.png")}) 
+                local VulnerabilitySection = Column:section({name = "Money Section", size = 0.360, default = false, side = 'right', icon = GetImage("unlocked.png")}) 
 
                 local GetFruitCup = LPH_NO_VIRTUALIZE(function()
                     local Found, Cup = false, nil;
@@ -15358,11 +15523,11 @@ DupingSection:toggle({name = "Auto Dupe",callback = function(state)
                 end)                                                 
 
 
-                VulnerabilitySection:button({name = "Infinite Money", callback = function()
+                VulnerabilitySection:button({name = "Generate Max Money", callback = function()
                     local Found, Cup = GetFruitCup()
 
                     if Cup and Found then
-                        HideUI("generating illegal cash 💷\n please wait.")
+                        --HideUI("generating illegal cash 💷\n please wait.")
 
                         local OLDCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
 
@@ -15383,12 +15548,12 @@ DupingSection:toggle({name = "Auto Dupe",callback = function(state)
 
                         Teleport(OLDCFrame)
 
-                        DeleteSecretUI()
+                        --DeleteSecretUI()
 
                         return
                     end
 
-                    HideUI("buying products 🍉")
+                    --HideUI("buying products 🍉")
 
                     local OLDCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
 
@@ -15421,7 +15586,7 @@ DupingSection:toggle({name = "Auto Dupe",callback = function(state)
                     end
 
                     if Check then
-                        DeleteSecretUI()
+                        --DeleteSecretUI()
                         library.notifications:create_notification({
                             name = "Aethra",
                             info = `Could not find items! Please check you have more than 5000$.`,
@@ -15430,9 +15595,9 @@ DupingSection:toggle({name = "Auto Dupe",callback = function(state)
                         return
                     end
 
-                    DeleteSecretUI()
+                    --DeleteSecretUI()
 
-                    HideUI("generating illegal cash 💷\n please wait..")
+                    --HideUI("generating illegal cash 💷\n please wait..")
 
                     Teleport(Stove.CookPart.CFrame, true)
 
@@ -15500,8 +15665,69 @@ DupingSection:toggle({name = "Auto Dupe",callback = function(state)
 
                     task.wait(2)
 
-                    pcall(DeleteSecretUI)
+                    --pcall(DeleteSecretUI)
                 end})
+
+VulnerabilitySection:button({name = "Clean All Filthy Money", callback = LPH_NO_VIRTUALIZE(function()
+                    if LocalPlayer.stored.FilthyStack.Value == 0 then 
+                        return library.notifications:create_notification({
+                            name = "Aethra",
+                            info = `You have no fucking money poor fuck!`,
+                            lifetime = 7.5
+                        })
+                    end
+        
+                    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
+                    if not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character:FindFirstChild("Humanoid").Health == 0 then return end
+        
+                    local Cleaner = GetGoodCleaner()
+                    
+                    if not Cleaner then
+                        return library.notifications:create_notification({
+                            name = "Aethra",
+                            info = `Could not find a valid cleaner!`,
+                            lifetime = 7.5
+                        })
+                    end
+        
+                    Teleport(Cleaner.WorldPivot)
+        
+                    task.wait(0.4)
+        
+                    fireproximityprompt(Cleaner:FindFirstChild("CashPrompt", true))
+        
+                    repeat task.wait() until Cleaner:FindFirstChild("On", true).Color == Color3.fromRGB(74, 156, 69)
+        
+                    task.wait(0.5)
+        
+                    fireproximityprompt(Cleaner:FindFirstChild("CashPrompt", true))
+                    
+                    task.wait(0.25)
+        
+                    Teleport(Cleaner.WorldPivot)
+        
+                    task.wait(0.4)
+        
+                    repeat task.wait() until LocalPlayer.Backpack:FindFirstChild("MoneyReady")
+        
+                    LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack["MoneyReady"])
+        
+                    repeat task.wait(0.1) fireproximityprompt(Cleaner:FindFirstChild("GrabPrompt", true)) until not LocalPlayer.Character:FindFirstChild("MoneyReady")
+                    
+                    repeat task.wait()
+                    until LocalPlayer.Backpack:FindFirstChild("BagOfMoney")
+        
+                    Teleport(CFrame.new(-222.29, 283.81, -1200.90))
+        
+                    task.wait(0.4)
+        
+                    LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack["BagOfMoney"])
+        
+                    task.wait(1)
+        
+                    fireproximityprompt(Workspace.ATMMoney.Prompt)
+                end)})
+
 
                 VulnerabilitySection:label({wrapped = true, name = "Infinite Money Takes Around 2 Minutes However It Can Take Longer Depending."})
 
@@ -15621,7 +15847,7 @@ DupingSection:toggle({name = "Auto Dupe",callback = function(state)
 end
 
 if Game_Name == "South Bronx" then
-    window:seperator({name = "Game"}) do
+    window:seperator({name = ""}) do
         local LocalPlayerTab, PlayersTab, PurchaseGunTab = window:tab({name = "Main", tabs = {"Local Player", "Players", "Teleports"}, icon = GetImage("World.png")}) do
             do -- \\ Local Player
                 local LocalPlayerColumn = LocalPlayerTab:column({})
@@ -16150,7 +16376,7 @@ if Game_Name == "South Bronx" then
 end
 
 if Game_Name == "BlockSpin" then
-    window:seperator({name = "Game"}) do
+    window:seperator({name = ""}) do
         local LocalPlayerTab, PlayersTab, PurchaseGunTab, MiscTab = window:tab({name = "Main", tabs = {"Local Player"}, icon = GetImage("World.png")}) do
             local LocalPlayerColumn = LocalPlayerTab:column({})
             local LocalPlayerModsSection = LocalPlayerColumn:section({name = "Local Player Modifications", side = "left", size = 0.475})
@@ -16181,7 +16407,7 @@ if Game_Name == "BlockSpin" then
     end
 end
 
-window:seperator({name = "Combat"}) do
+window:seperator({name = ""}) do
     local SilentAimTab = window:tab({name = "Silent Aim", tabs = {"General Settings"}, icon = GetImage("Pistol.png")}) do
         local SilentAimColumn = SilentAimTab:column({})
 
@@ -16533,8 +16759,8 @@ window:seperator({name = "Combat"}) do
     end
 end
 
-window:seperator({name = "World"}) do
-    local VisualsTab = window:tab({name = "Visuals", tabs = {"Players"}, icon = GetImage("ESP.png")})
+window:seperator({name = ""}) do
+    local VisualsTab = window:tab({name = "ESP", tabs = {"Players"}, icon = GetImage("ESP.png")})
 
     local VisualsColum = VisualsTab:column({})
     local PlayerVisualsSection = VisualsColum:section({name = "Player Visuals", side = "left", size = 0.725})
