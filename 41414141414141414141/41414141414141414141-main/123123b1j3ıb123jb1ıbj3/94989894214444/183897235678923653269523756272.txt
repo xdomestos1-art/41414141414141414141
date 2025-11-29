@@ -71,7 +71,7 @@ end
 -- Your Notifications
 notify("Aethra", "Loading…", 12)
 task.wait(3)
-notify("Last Update", "11.27.2025\n Check Discord For Logs", 10)
+notify("Last Update", "11.29.2025\nCheck Discord For Logs!", 10)
 
 
 if LPH_OBFUSCATED == nil then
@@ -444,6 +444,9 @@ local Config = {
 
         ["AutoDrop"] = false;
         ["MoneyAmount"] = false;
+
+        ["carfly"] = false;
+        ["carflyspeed"] = 20;
 
         ["antiafk"] = false;
 
@@ -4462,42 +4465,51 @@ local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-local infJumpDebounce = false
-local jumpCooldown = 0.5 
+local jumpConnection
+local jumpCooldown = 1 -- saniye
 local lastJumpTime = 0
-local jumpConnection 
 
-if jumpConnection then
-    jumpConnection:Disconnect()
-    jumpConnection = nil
-end
+local function EnableNoJumpCooldown()
+    if jumpConnection then jumpConnection:Disconnect() end
 
-if Config.TheBronx.PlayerModifications.NoJumpCooldown then
     jumpConnection = UserInputService.JumpRequest:Connect(function()
         local now = tick()
-        if not infJumpDebounce and (now - lastJumpTime >= jumpCooldown) then
-            local char = LocalPlayer.Character
-            if char then
-                local humanoid = char:FindFirstChildWhichIsA("Humanoid")
-                if humanoid then
-                    infJumpDebounce = true
-                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                    lastJumpTime = now
-                    task.wait(0.01) -- kısa debounce
-                    infJumpDebounce = false
-                end
-            end
+        -- Cooldown kontrolü
+        if now - lastJumpTime < jumpCooldown then return end
+
+        local char = LocalPlayer.Character
+        if not char then return end
+
+        local humanoid = char:FindFirstChildWhichIsA("Humanoid")
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            lastJumpTime = now -- cooldown başlat
         end
     end)
-else
+end
 
+local function DisableNoJumpCooldown()
     if jumpConnection then
         jumpConnection:Disconnect()
         jumpConnection = nil
     end
 end
-                
 
+-- Config toggle
+task.spawn(function()
+    while task.wait(0.1) do
+        if Config.TheBronx.PlayerModifications.NoJumpCooldown then
+            if not jumpConnection then
+                EnableNoJumpCooldown()
+            end
+        else
+            DisableNoJumpCooldown()
+        end
+    end
+end)
+
+
+            
 
                 if LocalPlayer.PlayerGui:FindFirstChild("CameraTexts") and LocalPlayer.PlayerGui:FindFirstChild("CameraTexts"):FindFirstChild("LocalScript") then
                     LocalPlayer.PlayerGui:FindFirstChild("CameraTexts").Enabled = not Config.TheBronx.PlayerModifications.DisableJail
@@ -4925,6 +4937,63 @@ end
                     ReplicatedStorage:WaitForChild("BankProcessRemote"):InvokeServer("Drop", tostring(Config.TheBronx.MoneyAmount))
                 end
             end))]]
+
+--carfly start
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local UIS = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+
+local function GetCarFlyEnabled()
+    return Config.TheBronx.carfly or false
+end
+
+local function GetCarFlySpeed()
+    return Config.TheBronx.carflyspeed or 50
+end
+
+RunService.RenderStepped:Connect(function(dt)
+    if not GetCarFlyEnabled() then return end
+
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    local seat = hum.SeatPart
+    if not seat or not seat:IsA("VehicleSeat") then return end
+    local car = seat.Parent
+    if not car then return end
+    if not car.PrimaryPart then
+        local body = car:FindFirstChild("Body")
+        car.PrimaryPart = body or seat
+    end
+    if not car.PrimaryPart then return end
+
+    local moveDir = Vector3.new()
+    local speed = GetCarFlySpeed()
+
+    local forward = car.PrimaryPart.CFrame.LookVector
+    local right = car.PrimaryPart.CFrame.RightVector
+
+    -- W/A/S/D ile sadece hareket
+    if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += forward end
+    if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= forward end
+    if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= right end
+    if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += right end
+
+    if moveDir.Magnitude > 0 then
+        moveDir = moveDir.Unit * speed * dt
+        local newPos = car.PrimaryPart.Position + moveDir
+
+        -- Araba düz duracak, rotasyon değişmeyecek
+        local targetCFrame = CFrame.new(newPos, newPos + forward)
+
+        car:SetPrimaryPartCFrame(targetCFrame)
+    end
+end)
+
+--carfly end
 
 task.spawn(LPH_NO_VIRTUALIZE(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -5618,6 +5687,7 @@ end
                 end
             end)
 
+            --old tp start
         --[[getgenv().Teleport = LPH_NO_VIRTUALIZE(function(CFrame, DontUi)
                 if not LocalPlayer.Character then return end
                 if not LocalPlayer.Character:FindFirstChild("Humanoid") then return end
@@ -5640,7 +5710,9 @@ end
 
                 --[[return true
             end)]]
+-- old tp end
 
+            --new tp
 getgenv().Teleport = LPH_NO_VIRTUALIZE(function(CF, DontUi)
     if not LocalPlayer.Character then return end
     local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
@@ -5667,7 +5739,7 @@ getgenv().Teleport = LPH_NO_VIRTUALIZE(function(CF, DontUi)
 
     return true
 end)
-           
+           -- new tp end
 
             GetWorkingSafe = LPH_NO_VIRTUALIZE(function()
                 local House; local Safe;
@@ -10130,8 +10202,8 @@ if not Mobile then
         end 
 
         function library:init_config(window) 
-            window:seperator({name = ""})
-            local main, playerlist = window:tab({name = "Configs", tabs = {"Main", "Playerlist"}})
+            --window:seperator({name = ""})
+            local main = window:tab({name = "Configs", tabs = {"Main"}})
             
             local column = main:column({})
             local section = column:section({name = "Configs", size = 1, default = false, icon = "rbxassetid://139628202576511"})
@@ -10251,7 +10323,7 @@ if not Mobile then
                 Services.TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId)
             end})
             
-            local _column = playerlist:column({})
+            --[[local _column = playerlist:column({})
             local _section = _column:section({name = "Players", size = 1, default = false})
 
             local plr_list = _section:list({options = {}, flag = "player_list"});
@@ -10344,7 +10416,7 @@ if not Mobile then
             players.PlayerAdded:Connect(refreshplrs)
 
             players.PlayerRemoving:Connect(refreshplrs)
-        end
+        end]]
     --
 
     -- Notification Library
@@ -10504,6 +10576,7 @@ if not Mobile then
             end)
         end
     --end)()
+    end
     else
             --LPH_JIT_MAX(function()
 
@@ -14132,7 +14205,7 @@ if not Mobile then
 
         function library:init_config(window) 
             local text;
-            window:seperator({name = ""})
+            --window:seperator({name = ""})
             local main = window:tab({name = "Configs", tabs = {"Main"}})
             
             local column = main:column({})
@@ -14480,7 +14553,43 @@ if Game_Name == "The Bronx" then
             do -- \\ Local Player Tab
                 local LocalPlayerColumn = LocalPlayerTab:column({})
 
-                local LocalPlayerModsSection = LocalPlayerColumn:section({name = "Local Player Modifications", side = "left", size = 1.0135})
+                local LocalPlayerModsSection = LocalPlayerColumn:section({name = "Player Mods", side = "left", size = 1.05})
+
+                -- nojumpcooldown
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local jumpCooldown = 0.5
+local lastJumpTime = 0
+local activated = false
+
+local function ActivateNoJumpCooldownOnce()
+    if activated then return end
+    activated = true
+
+    local jumpConnection
+    jumpConnection = UserInputService.JumpRequest:Connect(function()
+        local now = tick()
+        if now - lastJumpTime < jumpCooldown then return end
+
+        local char = LocalPlayer.Character
+        if not char then return end
+
+        local humanoid = char:FindFirstChildWhichIsA("Humanoid")
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            lastJumpTime = now
+        end
+    end)
+end
+
+LocalPlayerModsSection:button({
+    name = "No Jump Cooldown",
+    callback = function()
+        ActivateNoJumpCooldownOnce()
+    end
+})
 
                 local __Modifications = {
                     "Infinite Sleep";
@@ -14493,7 +14602,6 @@ if Game_Name == "The Bronx" then
                     "Disable Camera Bobbing";
                     "Disable Blood Effects";
                     "Bypass Locked Cars";
-                    "No Jump Cooldown";
                     "No Rent Pay";
                     "No Fall Damage";
                     "No Knockback";
@@ -14507,11 +14615,15 @@ if Game_Name == "The Bronx" then
                 end
 
                 LocalPlayerColumn = LocalPlayerTab:column({})
-                local CharacterModsSection = LocalPlayerColumn:section({name = "Character Modifications", side = "right", size = 0.800, icon = GetImage("Wrench.png")}) 
+                local CharacterModsSection = LocalPlayerColumn:section({name = "Extra Player Mods", side = "right", size = 0.820, icon = GetImage("Wrench.png")}) 
                 
                 --[[CharacterModsSection:toggle({type = "toggle", name = "Fly", flag = "invisfly", default = false, callback = function(state)
                     Config.TheBronx.invisfly = state
                 end})]]                 
+
+                CharacterModsSection:toggle({type = "toggle", name = "Car Speed", flag = "carfly", default = false, callback = function(state)
+                    Config.TheBronx.carfly = state
+                end}) 
 
                 CharacterModsSection:toggle({type = "toggle", name = "Modify WalkSpeed", flag = "ModifyWalkSpeed_TheBronx", default = false, callback = function(state)
                     Config.MiscSettings.ModifySpeed.Enabled = state
@@ -14559,6 +14671,10 @@ if Game_Name == "The Bronx" then
                     end
                 end})
 
+                CharacterModsSection:slider({name = "Car Speed", flag = "carflyspeed", min = 50, max = 300, default = 50, suffix = "%", callback = function(state)
+                    Config.TheBronx.carflyspeed = state
+                end})                
+
                 CharacterModsSection:slider({name = "WalkSpeed Value", flag = "WalkSpeedValue_TheBronx", min = 0, max = 250, default = 50, suffix = "%", callback = function(state)
                     Config.MiscSettings.ModifySpeed.Value = state
                 end})
@@ -14574,6 +14690,7 @@ if Game_Name == "The Bronx" then
                 CharacterModsSection:keybind({name = "Click Teleport Key", flag = "ClickTeleportKey_TheBronx", key = Enum.KeyCode.LeftControl, mode = "Hold", callback = function(state)
                     Config.TheBronx.ClickTeleportActive = state
                 end})
+                
 
                 local ExtraTabColumn = ExtraTab:column({})
 
@@ -15074,7 +15191,7 @@ ExtraSection:button({name = "Blue Gang Fit",callback = function()
 })
                     
 
-                local UISection = LocalPlayerColumn:section({name = "Toggle Interfaces Section", side = "right", size = 0.220, icon = GetImage("Settings.png")})
+                local UISection = LocalPlayerColumn:section({name = "Toggle GUI", side = "right", size = 0.220, icon = GetImage("Settings.png")})
 
                 local _UINames, BlacklistedNames = {'ATM GUI'}, {"Dead", "Settings1", "Controls", "FirstShopGUI", "ThaShop2", "WATCH GUI", "NYPD Cars", "CONSTRUCTION LEVEL", "RobPlayerUI", "Bronx LOCKER", 'MobileBeam', 'Settings', 'Flash', 'Enter'}
                 
@@ -15276,7 +15393,7 @@ PlayerOptionsSection:button({
 
                 PlayerOptionsSection:button({name = "Fling Player - Hold Gun", callback = function(state)
                     for Index=1, 50 do
-                        pcall(kill_gun, Config.TheBronx.PlayerUtilities.SelectedPlayer, "RightUpperLeg", 0.01)
+                        pcall(kill_gun, Config.TheBronx.PlayerUtilities.SelectedPlayer, "HumanoidRootPart", 0.01) --RightUpperLeg
                     end
                 end})
 
@@ -15306,7 +15423,7 @@ PlayerOptionsSection:button({
             do -- \\ Misc Tab
                 local Column = MiscTab:column({})
 
-                local FarmingSection = Column:section({name = "Farming", size = 0.500, default = false, side = 'left', icon = GetImage("Wheatt.png")})
+                local FarmingSection = Column:section({name = "Farming", size = 0.460, default = false, side = 'left', icon = GetImage("Wheatt.png")})
 
                 FarmingSection:toggle({type = "toggle", name = "Auto Farm Construction", flag = "FarmConstruction_TheBronx", default = false, callback = function(state)
                     Config.TheBronx.Farms.FarmConstructionJob = state
@@ -15345,6 +15462,32 @@ PlayerOptionsSection:button({
                 FarmSettingsSection:toggle({type = "toggle", name = "Auto Sell Trash", flag = "SellTrash_TheBronx", default = false, callback = function(state)
                     Config.TheBronx.Farms.AutoSellTrash = state
                 end})
+
+                local megaphonesection = Column:section({name = "Megaphone List", side = "left", size = 0.310, icon = GetImage("Wrench.png")})   
+                
+megaphonesection:button({name = "Hands UP!", callback = function()
+        local ohString1 = "Hands UP!"
+        game:GetService("ReplicatedStorage").MegaphoneRemote:FireServer(ohString1)
+    end
+})
+
+megaphonesection:button({name = "Driver Pull Over!", callback = function()
+        local ohString1 = "Driver Pull Over!"
+        game:GetService("ReplicatedStorage").MegaphoneRemote:FireServer(ohString1)
+    end
+})
+
+megaphonesection:button({name = "Move it FOLKS!", callback = function()
+        local ohString1 = "Move it FOLKS!"
+        game:GetService("ReplicatedStorage").MegaphoneRemote:FireServer(ohString1)
+    end
+})
+
+megaphonesection:button({name = "PULL OVER NOW!", callback = function()
+        local ohString1 = "PULL OVER NOW!"
+        game:GetService("ReplicatedStorage").MegaphoneRemote:FireServer(ohString1)
+    end
+})                                
 
                 Column = MiscTab:column({})
 
@@ -16407,7 +16550,7 @@ if Game_Name == "BlockSpin" then
     end
 end
 
-window:seperator({name = ""}) do
+--window:seperator({name = ""}) do
     local SilentAimTab = window:tab({name = "Silent Aim", tabs = {"General Settings"}, icon = GetImage("Pistol.png")}) do
         local SilentAimColumn = SilentAimTab:column({})
 
@@ -16522,7 +16665,7 @@ window:seperator({name = ""}) do
         end})
     end
 
-    local AimlockTab = window:tab({name = "Aimlock", tabs = {"General Settings"}, icon = GetImage("Aimlock.png")}) do
+    local AimlockTab = window:tab({name = "AimBot", tabs = {"General Settings"}, icon = GetImage("Aimlock.png")}) do
         local AimlockAimColumn = AimlockTab:column({})
 
         local GeneralSection = AimlockAimColumn:section({name = "General", side = "left", size = 0.23, icon = GetImage("UZI.png")})
@@ -16632,7 +16775,7 @@ window:seperator({name = ""}) do
     end
 
     if Game_Name == "The Bronx" and not Solara then
-        local WeaponModTab, MiscModTab = window:tab({name = "Modifications", tabs = {"Weapon Modifications", "Hitbox Modifications"}, icon = GetImage("Wrench.png")}) do
+        local WeaponModTab, MiscModTab = window:tab({name = "Gun Mods", tabs = {"Weapon Modifications"}, icon = GetImage("Wrench.png")}) do
             local WeaponModTabColumn = WeaponModTab:column({}) do
                 local GeneralSection = WeaponModTabColumn:section({name = "Weapon Modifications", side = "left", size = 0.5, icon = GetImage("Pistol.png")})
 
@@ -16679,25 +16822,27 @@ window:seperator({name = ""}) do
                 end})
             end
 
-            local MiscTabColumn = MiscModTab:column({}) do
-                local GeneralSection = MiscTabColumn:section({name = "Hitbox Modifications", side = "left", size = 0.4})
+    if Game_Name == "The Bronx" then
+        local hitboxtab = window:tab({name = "Hitbox Mods", tabs = {"Hitbox"}, icon = GetImage("Wrench.png")}) do
+            local hitboxcolumn = hitboxtab:column({}) do
+                local hitboxsection = hitboxcolumn:section({name = "Hitbox Modifications", side = "left", size = 0.4})
 
-                GeneralSection:toggle({name = 'Enabled', flag = 'HitboxesEnabled', type = 'toggle', default = false, callback = function(state)
+                hitboxsection:toggle({name = 'Enabled', flag = 'HitboxesEnabled', type = 'toggle', default = false, callback = function(state)
                     Config.MiscSettings.Hitbox_Expander.Enabled = state
                 end}):colorpicker({flag = 'HitboxesColor', color = Color3.new(1,1,1), alpha = 1, callback = function(state, alpha)
                     Config.MiscSettings.Hitbox_Expander.Color = state
                     Config.MiscSettings.Hitbox_Expander.Transparency = alpha
                 end})
 
-                GeneralSection:slider({name = "Hitbox Multiplier", flag = "HitBox_Multiplier", min = 1, max = 20, default = 10, callback = function(state)
+                hitboxsection:slider({name = "Hitbox Multiplier", flag = "HitBox_Multiplier", min = 1, max = 20, default = 10, callback = function(state)
                     Config.MiscSettings.Hitbox_Expander.Multiplier = state
                 end})
 
-                GeneralSection:dropdown({name = "Hitbox Part", flag = "HitBoxPart", items = {"Head", "Torso"}, default = "Torso", multi = false, callback = function(value)
+                hitboxsection:dropdown({name = "Hitbox Part", flag = "HitBoxPart", items = {"Head", "Torso"}, default = "Torso", multi = false, callback = function(value)
                     Config.MiscSettings.Hitbox_Expander.Part = (value == "Head") and "Head" or "HumanoidRootPart"
                 end})
 
-                GeneralSection:dropdown({name = "Hitbox Material", flag = "HitBoxMaterial", items = {
+                hitboxsection:dropdown({name = "Hitbox Material", flag = "HitBoxMaterial", items = {
                     "SmoothPlastic", "Wood", "Slate", "Concrete", "CorrodedMetal",
                     "Neon", "Grass", "Fabric", "DiamondPlate", "Sandstone",
                     "Ice", "Marble", "Granite", "Pebble", "Metal",
@@ -16757,9 +16902,8 @@ window:seperator({name = ""}) do
             end
         end
     end
-end
 
-window:seperator({name = ""}) do
+--window:seperator({name = ""}) do
     local VisualsTab = window:tab({name = "ESP", tabs = {"Players"}, icon = GetImage("ESP.png")})
 
     local VisualsColum = VisualsTab:column({})
@@ -16982,4 +17126,5 @@ if hookfunction and not Solara and LPH_OBFUSCATED and Game_Name == "South Bronx"
 
         return _FireServer(self, ...)
     end)
+end
 end
