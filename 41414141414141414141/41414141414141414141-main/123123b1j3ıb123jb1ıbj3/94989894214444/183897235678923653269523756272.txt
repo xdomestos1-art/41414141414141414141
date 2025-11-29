@@ -5737,7 +5737,7 @@ getgenv().Teleport = LPH_NO_VIRTUALIZE(function(CF, DontUi)
     hum.JumpPower = 50
     hum.AutoRotate = true
 
-    return true
+    return true 
 end)
            -- new tp end
 
@@ -14560,36 +14560,59 @@ local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
-local jumpCooldown = 0.5
-local lastJumpTime = 0
-local activated = false
+local noCooldownEnabled = false
+local jumpConnection
+local canJump = true
 
-local function ActivateNoJumpCooldownOnce()
-    if activated then return end
-    activated = true
+local function SetupNoJumpCooldown()
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+    if not humanoid then return end
 
-    local jumpConnection
+    humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+
+    if jumpConnection then
+        jumpConnection:Disconnect()
+        jumpConnection = nil
+    end
+
     jumpConnection = UserInputService.JumpRequest:Connect(function()
-        local now = tick()
-        if now - lastJumpTime < jumpCooldown then return end
-
-        local char = LocalPlayer.Character
-        if not char then return end
-
-        local humanoid = char:FindFirstChildWhichIsA("Humanoid")
-        if humanoid then
+        if noCooldownEnabled and canJump then
+            canJump = false
             humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-            lastJumpTime = now
+            task.delay(0.7, function()
+
+                canJump = true
+            end)
         end
     end)
 end
 
-LocalPlayerModsSection:button({
+LocalPlayerModsSection:toggle({
     name = "No Jump Cooldown",
-    callback = function()
-        ActivateNoJumpCooldownOnce()
+    default = false,
+    callback = function(state)
+        noCooldownEnabled = state
+        if state then
+            SetupNoJumpCooldown()
+        else
+            if jumpConnection then
+                jumpConnection:Disconnect()
+                jumpConnection = nil
+            end
+        end
     end
 })
+
+LocalPlayer.CharacterAdded:Connect(function()
+    if noCooldownEnabled then
+        task.wait(1)
+        SetupNoJumpCooldown()
+    end
+end)
+
+
+
 
                 local __Modifications = {
                     "Infinite Sleep";
@@ -14893,10 +14916,8 @@ local function GetNearestCar(hrp)
         local seat = car:FindFirstChild("DriveSeat")
         if not seat then continue end
 
-        -- zaten biri oturuyorsa geç
         if seat.Occupant then continue end
 
-        -- PrimaryPart fix
         if not car.PrimaryPart then
             local body = car:FindFirstChild("Body")
             if body and body:FindFirstChild("#Weight") then
@@ -14945,7 +14966,6 @@ ExtraSection:button({
         local seat = car:FindFirstChild("DriveSeat")
         if not seat then return end
 
-        -- Usable bypass
         seat:Sit(hum)
         task.wait(0.1)
         hum.Sit = false
@@ -14963,7 +14983,6 @@ ExtraSection:button({
     end
 })
 -- end bring car
-
                            
                 ExtraSection:button({name = "Hide Identity.", callback = function()
                 local Player = game.Players.LocalPlayer
@@ -15493,7 +15512,7 @@ megaphonesection:button({name = "PULL OVER NOW!", callback = function()
 
                 local DupingSection = Column:section({name = "Duping Section", size = 0.34, default = false, side = 'right', icon = GetImage("Node.png")}) 
 
-DupingSection:toggle({name = "Auto Dupe",callback = function(state)
+DupingSection:toggle({name = "Auto Dupe", callback = function(state)
         AutoDupe = state
         task.spawn(function()
             local Player = game.Players.LocalPlayer
@@ -15716,7 +15735,7 @@ DupingSection:toggle({name = "Auto Dupe",callback = function(state)
                     for Index, Value in Itemz do
                         if not LocalPlayer.Backpack:FindFirstChild(Value) then
                             ReplicatedStorage:WaitForChild("ExoticShopRemote"):InvokeServer(Value)
-                            task.wait(1)
+                            task.wait(0.1)
                         end
                     end
 
