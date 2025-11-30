@@ -71,7 +71,7 @@ end
 -- Your Notifications
 notify("Aethra", "Loading…", 12)
 task.wait(3)
-notify("Last Update", "11.29.2025\nCheck Discord For Logs!", 10)
+notify("Update!", "11.30.2025\nAdded Car Fly", 10)
 
 
 if LPH_OBFUSCATED == nil then
