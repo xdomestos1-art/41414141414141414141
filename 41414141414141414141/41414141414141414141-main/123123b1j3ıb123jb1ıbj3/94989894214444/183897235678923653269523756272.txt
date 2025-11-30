@@ -15559,13 +15559,13 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                         ReplicatedStorage.ListWeaponRemote:FireServer(ToolName, 999999)
                     end)
 
-                    task.wait(.26)
+                    task.wait(.25)
 
                     pcall(function()
                         ReplicatedStorage.BackpackRemote:InvokeServer("Store", ToolName)
                     end)
 
-                    task.wait(2.6)
+                    task.wait(2.5)
 
                     pcall(function()
                         ReplicatedStorage.BuyItemRemote:FireServer(ToolName, "Remove", ToolId)
