@@ -3051,7 +3051,7 @@ do
                 textLabel.Size = UDim2.new(0, 400, 0, 100)
                 textLabel.Font = Enum.Font.SourceSansBold
                 textLabel.RichText = true
-                textLabel.Text = '<font color="rgb(128, 0, 128)">Aethra</font>\n' .. Title
+                textLabel.Text = '<font color="rgb(21, 128, 0)">Aethra</font>\n' .. Title
                 textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
                 textLabel.BackgroundTransparency = 1
                 textLabel.TextSize = 36
@@ -3071,7 +3071,7 @@ do
                             local timeLeft = endTime - tick()
 
                             textLabel.Text = string.format(
-                                '<font color="rgb(128, 0, 128)">Aethra.</font>\n%s\nplease wait : <font color="rgb(128, 0, 128)">%.2f</font> seconds',
+                                '<font color="rgb(21, 128, 0)">Aethra.</font>\n%s\nplease wait : <font color="rgb(21, 128, 0)">%.2f</font> seconds',
                                 Title, math.max(timeLeft, 0)
                             )
 
@@ -5648,7 +5648,7 @@ end
                 textLabel.Size = UDim2.new(0, 400, 0, 100)
                 textLabel.Font = Enum.Font.SourceSansBold
                 textLabel.RichText = true
-                textLabel.Text = '<font color="rgb(128, 0, 128)">Aethra</font>\n' .. Title
+                textLabel.Text = '<font color="rgb(21, 128, 0)">Aethra</font>\n' .. Title
                 textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
                 textLabel.BackgroundTransparency = 1
                 textLabel.TextSize = 36
@@ -5668,7 +5668,7 @@ end
                             local timeLeft = endTime - tick()
 
                             textLabel.Text = string.format(
-                                '<font color="rgb(128, 0, 128)">Aethra</font> \n%s\nplease wait : <font color="rgb(128, 0, 128)">%.2f</font> seconds',
+                                '<font color="rgb(21, 128, 0)">Aethra</font> \n%s\nplease wait : <font color="rgb(21, 128, 0)">%.2f</font> seconds',
                                 Title, math.max(timeLeft, 0)
                             )
 
@@ -6667,7 +6667,7 @@ if not Mobile then
 -- Library init
     local themes = {
         preset = {
-            accent = rgb(128, 0, 128),
+            accent = rgb(21, 128, 0),
         }, 
 
         utility = {
@@ -10646,7 +10646,7 @@ if not Mobile then
 
     local themes = {
         preset = {
-            accent = rgb(128, 0, 128),
+            accent = rgb(21, 128, 0),
         }, 
 
         utility = {
@@ -15559,13 +15559,13 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                         ReplicatedStorage.ListWeaponRemote:FireServer(ToolName, 999999)
                     end)
 
-                    task.wait(.25)
+                    task.wait(.26)
 
                     pcall(function()
                         ReplicatedStorage.BackpackRemote:InvokeServer("Store", ToolName)
                     end)
 
-                    task.wait(2.5)
+                    task.wait(2.6)
 
                     pcall(function()
                         ReplicatedStorage.BuyItemRemote:FireServer(ToolName, "Remove", ToolId)
@@ -15590,6 +15590,8 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
         end)
     end
 })               
+-- old dupe end
+
 
                 local Cooldown = false;
 
@@ -15638,13 +15640,13 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                             ReplicatedStorage.ListWeaponRemote:FireServer(ToolName, 999999)
                         end)
 
-                        task.wait(.27)
+                        task.wait(.26)
 
                         spawn(function()
                             ReplicatedStorage.BackpackRemote:InvokeServer('Store', ToolName)
                         end)
 
-                        task.wait(2.7) --27
+                        task.wait(2.6) --27
 
                         spawn(function()
                             ReplicatedStorage.BuyItemRemote:FireServer(ToolName, 'Remove', ToolId)
