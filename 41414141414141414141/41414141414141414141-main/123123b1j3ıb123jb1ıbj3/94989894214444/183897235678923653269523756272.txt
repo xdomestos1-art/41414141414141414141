@@ -392,6 +392,7 @@ local Config = {
             ["BypassLockedCars"] = false;
             ["DisableBloodEffects"] = false;
             ["NoRentPay"] = false;
+            ["NoJumpCooldown"] = false;
             ["NoFallDamage"] = false;
             ["NoKnockback"] = false;
             ["InfiniteHealth"] = false;
@@ -4886,6 +4887,35 @@ do
                     ReplicatedStorage:WaitForChild("BankProcessRemote"):InvokeServer("Drop", tostring(Config.TheBronx.MoneyAmount))
                 end
             end))]]
+
+local UserInputService = game:GetService("UserInputService")
+
+UserInputService.JumpRequest:Connect(function()
+    local player = game.Players.LocalPlayer
+    if not player then return end
+    
+    local character = player.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+    if not humanoid then return end
+    
+    if Config.TheBronx.PlayerModifications.NoJumpCooldown then
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        return
+    end
+
+    if humanoid.FloorMaterial == Enum.Material.Air then
+        return
+    end
+    
+    if humanoid.Jump or humanoid:GetState() == Enum.HumanoidStateType.Jumping then
+        return
+    end
+
+    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+end)
+            
 
 --carfly start
 local RunService = game:GetService("RunService")
@@ -14493,6 +14523,7 @@ if Game_Name == "The Bronx" then
                     "Disable Blood Effects";
                     "Bypass Locked Cars";
                     "No Rent Pay";
+                    "No Jump Cooldown";
                     "No Fall Damage";
                     "No Knockback";
                     "Respawn Where You Died";
