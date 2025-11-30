@@ -4941,55 +4941,106 @@ end)
 --carfly start
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
 
-local function GetCarFlyEnabled()
-    return Config.TheBronx.carfly or false
-end
+local LocalPlayer = Players.LocalPlayer
+local hum, seat, car, bv, bg
 
-local function GetCarFlySpeed()
-    return Config.TheBronx.carflyspeed or 50
+-- Setup function: araba ve BodyObjects hazırla
+local function Setup()
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+
+    seat = hum.SeatPart
+    if not seat or not seat:IsA("VehicleSeat") then return end
+
+    car = seat.Parent
+    if not car then return end
+
+    local primary = car.PrimaryPart or car:FindFirstChild("Body") or seat
+    if not primary then return end
+
+    if not bv then
+        bv = Instance.new("BodyVelocity")
+        bv.MaxForce = Vector3.new(1e7, 1e7, 1e7)
+        bv.Velocity = Vector3.zero
+        bv.Parent = primary
+    end
+
+    if not bg then
+        bg = Instance.new("BodyGyro")
+        bg.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
+        bg.P = 30000
+        bg.D = 800
+        bg.Parent = primary
+    end
 end
 
 RunService.RenderStepped:Connect(function(dt)
-    if not GetCarFlyEnabled() then return end
-
-    local char = LocalPlayer.Character
-    if not char then return end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    local seat = hum.SeatPart
-    if not seat or not seat:IsA("VehicleSeat") then return end
-    local car = seat.Parent
-    if not car then return end
-    if not car.PrimaryPart then
-        local body = car:FindFirstChild("Body")
-        car.PrimaryPart = body or seat
+    -- CarFly kapalıysa BodyObjects temizle
+    if not Config.TheBronx.carfly then
+        if bv then
+            bv:Destroy()
+            bv = nil
+        end
+        if bg then
+            bg:Destroy()
+            bg = nil
+        end
+        return
     end
-    if not car.PrimaryPart then return end
 
-    local moveDir = Vector3.new()
-    local speed = GetCarFlySpeed()
+    -- Karakter ve araç hazır değilse setup yap
+    if not LocalPlayer.Character 
+        or not LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        or not LocalPlayer.Character:FindFirstChildOfClass("Humanoid").SeatPart 
+    then
+        if bv then bv.Velocity = Vector3.zero end
+        return
+    end
 
-    local forward = car.PrimaryPart.CFrame.LookVector
-    local right = car.PrimaryPart.CFrame.RightVector
+    if not hum or hum.Parent ~= LocalPlayer.Character then
+        Setup()
+        return
+    end
 
-    -- W/A/S/D ile sadece hareket
-    if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += forward end
-    if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= forward end
-    if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= right end
-    if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += right end
+    if not seat or not seat:IsA("VehicleSeat") then
+        Setup()
+        return
+    end
 
-    if moveDir.Magnitude > 0 then
-        moveDir = moveDir.Unit * speed * dt
-        local newPos = car.PrimaryPart.Position + moveDir
+    local root = car.PrimaryPart
+    if not root then return end
 
-        -- Araba düz duracak, rotasyon değişmeyecek
-        local targetCFrame = CFrame.new(newPos, newPos + forward)
+    Setup() -- Eğer BodyVelocity veya BodyGyro eksikse tekrar oluştur
 
-        car:SetPrimaryPartCFrame(targetCFrame)
+    local speed = Config.TheBronx.carflyspeed or 50
+
+    local cam = workspace.CurrentCamera
+    local camLook = cam.CFrame.LookVector
+    local camRight = cam.CFrame.RightVector
+
+    -- BodyGyro ile kamera yönüne dön
+    if bg then
+        bg.CFrame = CFrame.new(root.Position, root.Position + camLook)
+    end
+
+    -- Hareket yönü
+    local moveDir = Vector3.zero
+    if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += camLook end
+    if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= camLook end
+    if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= camRight end
+    if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += camRight end
+    if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir += Vector3.new(0,1,0) end
+    if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir -= Vector3.new(0,1,0) end
+
+    if moveDir.Magnitude > 0 and bv then
+        bv.Velocity = moveDir.Unit * speed
+    elseif bv then
+        bv.Velocity = Vector3.zero
     end
 end)
 
@@ -5106,9 +5157,6 @@ RunService.RenderStepped:Connect(function()
     hrp.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, math.rad(spinAngle), 0)
 end)
 --spinbot end
-
-
-
 
 -- anti afk
 local Players = game:GetService("Players")
@@ -14578,7 +14626,7 @@ end)]]
                     Config.TheBronx.invisfly = state
                 end})]]                 
 
-                CharacterModsSection:toggle({type = "toggle", name = "Car Speed", flag = "carfly", default = false, callback = function(state)
+                CharacterModsSection:toggle({type = "toggle", name = "Car Fly", flag = "carfly", default = false, callback = function(state)
                     Config.TheBronx.carfly = state
                 end}) 
 
@@ -14628,7 +14676,7 @@ end)]]
                     end
                 end})
 
-                CharacterModsSection:slider({name = "Car Speed", flag = "carflyspeed", min = 50, max = 300, default = 50, suffix = "%", callback = function(state)
+                CharacterModsSection:slider({name = "Car Fly Speed", flag = "carflyspeed", min = 50, max = 300, default = 50, suffix = "%", callback = function(state)
                     Config.TheBronx.carflyspeed = state
                 end})                
 
@@ -15312,12 +15360,12 @@ PlayerOptionsSection:button({
         local moneyValue = money and money.Value or "Not Found"
 
         library.notifications:create_notification({
-            name = "Aethra",
-            info = "Bank: " .. bankValue,
+            name = "Aethra",          
+            info = "Bank: " .. bankValue,          
             lifetime = 5
         })
 
-        library.notifications:create_notification({
+         library.notifications:create_notification({
             name = "Aethra",
             info = "FilthyStack: " .. filthyValue,
             lifetime = 5
@@ -15327,7 +15375,7 @@ PlayerOptionsSection:button({
             name = "Aethra",
             info = "Money: " .. moneyValue,
             lifetime = 5
-        })
+    })
     end
 })
 -- view bank                               
@@ -15346,7 +15394,7 @@ PlayerOptionsSection:button({
 
                 PlayerOptionsSection:button({name = "Fling Player - Hold Gun", callback = function(state)
                     for Index=1, 50 do
-                        pcall(kill_gun, Config.TheBronx.PlayerUtilities.SelectedPlayer, "HumanoidRootPart", 0.01) --RightUpperLeg
+                        pcall(kill_gun, Config.TheBronx.PlayerUtilities.SelectedPlayer, "RightUpperArm", 0.01) --RightUpperLeg
                     end
                 end})
 
@@ -15376,7 +15424,7 @@ PlayerOptionsSection:button({
             do -- \\ Misc Tab
                 local Column = MiscTab:column({})
 
-                local FarmingSection = Column:section({name = "Farming", size = 0.460, default = false, side = 'left', icon = GetImage("Wheatt.png")})
+                local FarmingSection = Column:section({name = "Farming", size = 0.520, default = false, side = 'left', icon = GetImage("Wheatt.png")})
 
                 FarmingSection:toggle({type = "toggle", name = "Auto Farm Construction", flag = "FarmConstruction_TheBronx", default = false, callback = function(state)
                     Config.TheBronx.Farms.FarmConstructionJob = state
@@ -15406,17 +15454,15 @@ PlayerOptionsSection:button({
                     Config.TheBronx.Farms.CollectDroppedLoot = state
                 end})
 
-                local FarmSettingsSection = Column:section({name = "Farming Settings", size = 0.225, default = false, side = 'left', Icon = GetImage("Settings.png")}) 
-
-                FarmSettingsSection:toggle({type = "toggle", name = "AFK Safety Teleport", flag = "AFKCheck_TheBronx", default = false, callback = function(state)
+                --[[FarmSettingsSection:toggle({type = "toggle", name = "AFK Safety Teleport", flag = "AFKCheck_TheBronx", default = false, callback = function(state)
                     Config.TheBronx.Farms.AFKCheck = state
-                end})
+                end})]]
 
-                FarmSettingsSection:toggle({type = "toggle", name = "Auto Sell Trash", flag = "SellTrash_TheBronx", default = false, callback = function(state)
+                FarmingSection:toggle({type = "toggle", name = "Auto Sell Trash", flag = "SellTrash_TheBronx", default = false, callback = function(state)
                     Config.TheBronx.Farms.AutoSellTrash = state
                 end})
 
-                local megaphonesection = Column:section({name = "Megaphone List", side = "left", size = 0.310, icon = GetImage("Wrench.png")})   
+                local megaphonesection = Column:section({name = "Megaphone List", side = "left", size = 0.470, icon = GetImage("Wrench.png")})   
                 
 megaphonesection:button({name = "Hands UP!", callback = function()
         local ohString1 = "Hands UP!"
@@ -15525,7 +15571,6 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
     end
 })               
 -- old dupe end
-
 
                 local Cooldown = false;
 
