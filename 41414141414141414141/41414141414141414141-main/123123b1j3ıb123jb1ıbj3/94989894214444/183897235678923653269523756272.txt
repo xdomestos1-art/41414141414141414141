@@ -14556,7 +14556,7 @@ if Game_Name == "The Bronx" then
                 local LocalPlayerModsSection = LocalPlayerColumn:section({name = "Player Mods", side = "left", size = 1.05})
 
                 -- nojumpcooldown
-local UserInputService = game:GetService("UserInputService")
+--[[local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
@@ -14609,7 +14609,7 @@ LocalPlayer.CharacterAdded:Connect(function()
         task.wait(1)
         SetupNoJumpCooldown()
     end
-end)
+end)]]
 
 
 
