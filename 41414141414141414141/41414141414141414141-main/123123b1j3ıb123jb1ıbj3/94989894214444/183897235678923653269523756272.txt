@@ -5012,114 +5012,38 @@ task.spawn(LPH_NO_VIRTUALIZE(function()
     end
 end))            
 
--- fly
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
-
-local LocalPlayer = Players.LocalPlayer
-local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local hrp = char:WaitForChild("HumanoidRootPart")
-local humanoid = char:WaitForChild("Humanoid")
-
-local flyActive = false
-local flyVel = Instance.new("BodyVelocity")
-flyVel.MaxForce = Vector3.new(0,0,0)
-flyVel.Velocity = Vector3.zero
-flyVel.Parent = hrp
-
-local speed = 50
-local keys = {W=false,A=false,S=false,D=false,Space=false,LShift=false}
-
--- Input tracking
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if keys[input.KeyCode.Name] ~= nil then
-        keys[input.KeyCode.Name] = true
-    end
-end)
-UserInputService.InputEnded:Connect(function(input)
-    if keys[input.KeyCode.Name] ~= nil then
-        keys[input.KeyCode.Name] = false
-    end
-end)
-
--- Character respawn
-LocalPlayer.CharacterAdded:Connect(function(newChar)
-    char = newChar
-    hrp = char:WaitForChild("HumanoidRootPart")
-    humanoid = char:WaitForChild("Humanoid")
-    flyVel:Destroy()
-    flyVel = Instance.new("BodyVelocity")
-    flyVel.MaxForce = Vector3.new(0,0,0)
-    flyVel.Velocity = Vector3.zero
-    flyVel.Parent = hrp
-end)
-
--- Fly toggle
-function ToggleFly()
-    flyActive = not flyActive
-    if flyActive then
-        flyVel.MaxForce = Vector3.new(4000,4000,4000)
-        if humanoid then humanoid.PlatformStand = true end
-    else
-        flyVel.MaxForce = Vector3.new(0,0,0)
-        flyVel.Velocity = Vector3.zero
-        if humanoid then humanoid.PlatformStand = false end
-    end
-end
-
--- Movement loop
-RunService.RenderStepped:Connect(function()
-    if not flyActive or not hrp then
-        if flyVel then flyVel.Velocity = Vector3.zero end
-        return
-    end
-
-    local moveDir = Vector3.zero
-    local cam = Workspace.CurrentCamera
-
-    if keys.W then moveDir += cam.CFrame.LookVector end
-    if keys.S then moveDir -= cam.CFrame.LookVector end
-    if keys.A then moveDir -= cam.CFrame.RightVector end
-    if keys.D then moveDir += cam.CFrame.RightVector end
-    if keys.Space then moveDir += Vector3.new(0,1,0) end
-    if keys.LShift then moveDir -= Vector3.new(0,1,0) end
-
-    if moveDir.Magnitude > 0 then
-        moveDir = moveDir.Unit
-    end
-
-    if flyVel then
-        flyVel.Velocity = moveDir * speed
-    end
-end)
-
-
---flyend
 
 --autopass
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local TextChatService = game:GetService("TextChatService")
+local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
+
 local lastSend = 0
+local lastCheck = 0
+local cachedClosest = nil
+
+local MaxPassDistance = 25
 
 local function GetClosestPlayer()
     local closest = nil
     local shortest = math.huge
 
     local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
+    if not char or not char:FindFirstChild("HumanoidRootPart") then 
+        return nil 
+    end
 
     local myPos = char.HumanoidRootPart.Position
 
     for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+        if p ~= LocalPlayer 
+            and p.Character 
+            and p.Character:FindFirstChild("HumanoidRootPart") 
+        then
             local dist = (p.Character.HumanoidRootPart.Position - myPos).Magnitude
-            if dist < shortest then
+            if dist < shortest and dist <= MaxPassDistance then -- mesafe limiti
                 shortest = dist
                 closest = p
             end
@@ -5129,26 +5053,36 @@ local function GetClosestPlayer()
     return closest
 end
 
+
 RunService.RenderStepped:Connect(function()
-    if Config.TheBronx.autopass then
-        local char = LocalPlayer.Character
-        if not char then return end
 
-        
-        local tool = char:FindFirstChildOfClass("Tool")
-        if tool then
-            local closest = GetClosestPlayer()
-            if closest and tick() - lastSend > 1 then
-                lastSend = tick()
+    if not Config.TheBronx.autopass then 
+        return 
+    end
 
-                local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
-                if channel then
-                    channel:SendAsync("/passto " .. closest.Name)
-                end
-            end
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    local tool = char:FindFirstChildOfClass("Tool")
+    if not tool then return end
+
+    local tickNow = tick()
+
+    if tickNow - lastCheck > 0.15 then
+        lastCheck = tickNow
+        cachedClosest = GetClosestPlayer()
+    end
+
+    if cachedClosest and tickNow - lastSend > 1 then
+        lastSend = tickNow
+
+        local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+        if channel then
+            channel:SendAsync("/passto " .. cachedClosest.Name)
         end
     end
 end)
+
 --autopass end
 
 --spinbot
