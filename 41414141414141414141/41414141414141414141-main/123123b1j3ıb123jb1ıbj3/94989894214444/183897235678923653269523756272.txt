@@ -391,7 +391,6 @@ local Config = {
             ["DisableCameraBobbing"] = false;
             ["BypassLockedCars"] = false;
             ["DisableBloodEffects"] = false;
-            ["NoJumpCooldown"] = false;
             ["NoRentPay"] = false;
             ["NoFallDamage"] = false;
             ["NoKnockback"] = false;
@@ -4459,57 +4458,7 @@ do
 
                 if LocalPlayer.PlayerGui:FindFirstChild("BloodGui") then
                     LocalPlayer.PlayerGui:FindFirstChild("BloodGui").Enabled = not Config.TheBronx.PlayerModifications["DisableBloodEffects"]
-                end
-
-local UserInputService = game:GetService("UserInputService")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
-local jumpConnection
-local jumpCooldown = 1 -- saniye
-local lastJumpTime = 0
-
-local function EnableNoJumpCooldown()
-    if jumpConnection then jumpConnection:Disconnect() end
-
-    jumpConnection = UserInputService.JumpRequest:Connect(function()
-        local now = tick()
-        -- Cooldown kontrolü
-        if now - lastJumpTime < jumpCooldown then return end
-
-        local char = LocalPlayer.Character
-        if not char then return end
-
-        local humanoid = char:FindFirstChildWhichIsA("Humanoid")
-        if humanoid then
-            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-            lastJumpTime = now -- cooldown başlat
-        end
-    end)
-end
-
-local function DisableNoJumpCooldown()
-    if jumpConnection then
-        jumpConnection:Disconnect()
-        jumpConnection = nil
-    end
-end
-
--- Config toggle
-task.spawn(function()
-    while task.wait(0.1) do
-        if Config.TheBronx.PlayerModifications.NoJumpCooldown then
-            if not jumpConnection then
-                EnableNoJumpCooldown()
-            end
-        else
-            DisableNoJumpCooldown()
-        end
-    end
-end)
-
-
-            
+                end           
 
                 if LocalPlayer.PlayerGui:FindFirstChild("CameraTexts") and LocalPlayer.PlayerGui:FindFirstChild("CameraTexts"):FindFirstChild("LocalScript") then
                     LocalPlayer.PlayerGui:FindFirstChild("CameraTexts").Enabled = not Config.TheBronx.PlayerModifications.DisableJail
@@ -4946,7 +4895,6 @@ local UIS = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local hum, seat, car, bv, bg
 
--- Setup function: araba ve BodyObjects hazırla
 local function Setup()
     local char = LocalPlayer.Character
     if not char then return end
@@ -4980,7 +4928,6 @@ local function Setup()
 end
 
 RunService.RenderStepped:Connect(function(dt)
-    -- CarFly kapalıysa BodyObjects temizle
     if not Config.TheBronx.carfly then
         if bv then
             bv:Destroy()
@@ -4993,7 +4940,6 @@ RunService.RenderStepped:Connect(function(dt)
         return
     end
 
-    -- Karakter ve araç hazır değilse setup yap
     if not LocalPlayer.Character 
         or not LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         or not LocalPlayer.Character:FindFirstChildOfClass("Humanoid").SeatPart 
@@ -5015,7 +4961,7 @@ RunService.RenderStepped:Connect(function(dt)
     local root = car.PrimaryPart
     if not root then return end
 
-    Setup() -- Eğer BodyVelocity veya BodyGyro eksikse tekrar oluştur
+    Setup()
 
     local speed = Config.TheBronx.carflyspeed or 50
 
@@ -5023,12 +4969,10 @@ RunService.RenderStepped:Connect(function(dt)
     local camLook = cam.CFrame.LookVector
     local camRight = cam.CFrame.RightVector
 
-    -- BodyGyro ile kamera yönüne dön
     if bg then
         bg.CFrame = CFrame.new(root.Position, root.Position + camLook)
     end
 
-    -- Hareket yönü
     local moveDir = Vector3.zero
     if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += camLook end
     if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= camLook end
@@ -5044,7 +4988,6 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
---carfly end
 
 task.spawn(LPH_NO_VIRTUALIZE(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -5094,7 +5037,7 @@ local function GetClosestPlayer()
             and p.Character:FindFirstChild("HumanoidRootPart") 
         then
             local dist = (p.Character.HumanoidRootPart.Position - myPos).Magnitude
-            if dist < shortest and dist <= MaxPassDistance then -- mesafe limiti
+            if dist < shortest and dist <= MaxPassDistance then 
                 shortest = dist
                 closest = p
             end
@@ -14536,64 +14479,6 @@ if Game_Name == "The Bronx" then
                 local LocalPlayerColumn = LocalPlayerTab:column({})
 
                 local LocalPlayerModsSection = LocalPlayerColumn:section({name = "Player Mods", side = "left", size = 1.05})
-
-                -- nojumpcooldown
---[[local UserInputService = game:GetService("UserInputService")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
-local noCooldownEnabled = false
-local jumpConnection
-local canJump = true
-
-local function SetupNoJumpCooldown()
-    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local humanoid = character:FindFirstChildWhichIsA("Humanoid")
-    if not humanoid then return end
-
-    humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-
-    if jumpConnection then
-        jumpConnection:Disconnect()
-        jumpConnection = nil
-    end
-
-    jumpConnection = UserInputService.JumpRequest:Connect(function()
-        if noCooldownEnabled and canJump then
-            canJump = false
-            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-            task.delay(0.7, function()
-
-                canJump = true
-            end)
-        end
-    end)
-end
-
-LocalPlayerModsSection:toggle({
-    name = "No Jump Cooldown",
-    default = false,
-    callback = function(state)
-        noCooldownEnabled = state
-        if state then
-            SetupNoJumpCooldown()
-        else
-            if jumpConnection then
-                jumpConnection:Disconnect()
-                jumpConnection = nil
-            end
-        end
-    end
-})
-
-LocalPlayer.CharacterAdded:Connect(function()
-    if noCooldownEnabled then
-        task.wait(1)
-        SetupNoJumpCooldown()
-    end
-end)]]
-
-
 
 
                 local __Modifications = {
