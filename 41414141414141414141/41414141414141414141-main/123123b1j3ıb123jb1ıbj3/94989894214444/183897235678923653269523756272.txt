@@ -4914,112 +4914,9 @@ UserInputService.JumpRequest:Connect(function()
     end
 
     humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-end)
-            
+end)           
 
---[[carfly start
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
-
-local LocalPlayer = Players.LocalPlayer
-local hum, seat, car, bv, bg
-
-local function Setup()
-    local char = LocalPlayer.Character
-    if not char then return end
-
-    hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-
-    seat = hum.SeatPart
-    if not seat or not seat:IsA("VehicleSeat") then return end
-
-    car = seat.Parent
-    if not car then return end
-
-    local primary = car.PrimaryPart or car:FindFirstChild("Body") or seat
-    if not primary then return end
-
-    if not bv then
-        bv = Instance.new("BodyVelocity")
-        bv.MaxForce = Vector3.new(1e7, 1e7, 1e7)
-        bv.Velocity = Vector3.zero
-        bv.Parent = primary
-    end
-
-    if not bg then
-        bg = Instance.new("BodyGyro")
-        bg.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
-        bg.P = 30000
-        bg.D = 800
-        bg.Parent = primary
-    end
-end
-
-RunService.RenderStepped:Connect(function(dt)
-    if not Config.TheBronx.carfly then
-        if bv then
-            bv:Destroy()
-            bv = nil
-        end
-        if bg then
-            bg:Destroy()
-            bg = nil
-        end
-        return
-    end
-
-    if not LocalPlayer.Character 
-        or not LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        or not LocalPlayer.Character:FindFirstChildOfClass("Humanoid").SeatPart 
-    then
-        if bv then bv.Velocity = Vector3.zero end
-        return
-    end
-
-    if not hum or hum.Parent ~= LocalPlayer.Character then
-        Setup()
-        return
-    end
-
-    if not seat or not seat:IsA("VehicleSeat") then
-        Setup()
-        return
-    end
-
-    local root = car.PrimaryPart
-    if not root then return end
-
-    Setup()
-
-    local speed = Config.TheBronx.carflyspeed or 50
-
-    local cam = workspace.CurrentCamera
-    local camLook = cam.CFrame.LookVector
-    local camRight = cam.CFrame.RightVector
-
-    if bg then
-        bg.CFrame = CFrame.new(root.Position, root.Position + camLook)
-    end
-
-    local moveDir = Vector3.zero
-    if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += camLook end
-    if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= camLook end
-    if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= camRight end
-    if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += camRight end
-    if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir += Vector3.new(0,1,0) end
-    if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir -= Vector3.new(0,1,0) end
-
-    if moveDir.Magnitude > 0 and bv then
-        bv.Velocity = moveDir.Unit * speed
-    elseif bv then
-        bv.Velocity = Vector3.zero
-    end
-end)]]
---carfly end
-
---test carfly
+--[[test carfly
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -5113,8 +5010,6 @@ RunService.RenderStepped:Connect(function(dt)
     if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= camLook end
     if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= camRight end
     if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += camRight end
-    if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir += Vector3.new(0,1,0) end
-    if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir -= Vector3.new(0,1,0) end
 
     if moveDir.Magnitude > 0 and bv then
         bv.Velocity = moveDir.Unit * speed
@@ -5122,7 +5017,128 @@ RunService.RenderStepped:Connect(function(dt)
         bv.Velocity = Vector3.zero
     end
 end)
---test carfly end
+--test carfly end]]
+
+-- CAR FLY FINAL FIXED
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+
+local LP = Players.LocalPlayer
+local hum, seat, car, root
+local bv, bg
+local lastCar
+
+local function Cleanup()
+    if bv then bv:Destroy() bv = nil end
+    if bg then bg:Destroy() bg = nil end
+end
+
+local function Setup()
+    Cleanup()
+
+    if not Config.TheBronx.carfly then return end
+
+    local char = LP.Character
+    if not char then return end
+
+    hum = char:FindFirstChildWhichIsA("Humanoid")
+    if not hum then return end
+
+    seat = hum.SeatPart
+    if not seat or not seat:IsA("VehicleSeat") then return end
+
+    car = seat.Parent
+    if not car then return end
+
+    root = car.PrimaryPart
+    if not root then return end
+
+    lastCar = car
+
+    for _, v in ipairs(car:GetChildren()) do
+        if v:IsA("BasePart") and not v.Name:lower():find("wheel") then
+            v.CanCollide = false
+        end
+    end
+
+    bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+    bv.Velocity = Vector3.zero
+    bv.Parent = root
+
+    bg = Instance.new("BodyGyro")
+    bg.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+    bg.P = 25000
+    bg.D = 1500
+    bg.CFrame = root.CFrame
+    bg.Parent = root
+end
+
+
+task.spawn(function()
+    while true do
+        task.wait(0.2)
+
+        local char = LP.Character
+        if not char then continue end
+
+        local h = char:FindFirstChildWhichIsA("Humanoid")
+        if not h then continue end
+
+        local currentSeat = h.SeatPart
+
+        if currentSeat and currentSeat:IsA("VehicleSeat") then
+            local newCar = currentSeat.Parent
+            if newCar ~= lastCar then
+                if Config.TheBronx.carfly then
+                    Setup()
+                end
+            end
+        else
+            if lastCar then
+                Cleanup()
+                lastCar = nil
+            end
+        end
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if not Config.TheBronx.carfly then
+        Cleanup()
+        return
+    end
+
+    if not car or not seat or not hum or not hum.SeatPart or hum.SeatPart ~= seat then
+        return
+    end
+
+    if not root then Setup() return end
+    if not bv or not bg then Setup() return end
+
+    local speed = Config.TheBronx.carflyspeed or 120
+    local cam = workspace.CurrentCamera
+    local camLook = cam.CFrame.LookVector
+    local camRight = cam.CFrame.RightVector
+
+    if UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+        bg.CFrame = CFrame.lookAt(root.Position, root.Position + camLook)
+    end
+
+    local move = Vector3.zero
+    if UIS:IsKeyDown(Enum.KeyCode.W) then move += camLook end
+    if UIS:IsKeyDown(Enum.KeyCode.S) then move -= camLook end
+    if UIS:IsKeyDown(Enum.KeyCode.A) then move -= camRight end
+    if UIS:IsKeyDown(Enum.KeyCode.D) then move += camRight end
+
+    if move.Magnitude > 0 then
+        bv.Velocity = move.Unit * speed
+    else
+        bv.Velocity = Vector3.zero
+    end
+end)
+--new try
 
 
 task.spawn(LPH_NO_VIRTUALIZE(function()
@@ -15738,7 +15754,7 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                     for Index, Value in Itemz do
                         if not LocalPlayer.Backpack:FindFirstChild(Value) then
                             ReplicatedStorage:WaitForChild("ExoticShopRemote"):InvokeServer(Value)
-                            task.wait(0.1)
+                            task.wait(0.08)
                         end
                     end
 
