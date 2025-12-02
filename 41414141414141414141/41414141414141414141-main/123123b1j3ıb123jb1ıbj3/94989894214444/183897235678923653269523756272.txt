@@ -15704,7 +15704,7 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                 end)                                                 
 
 
-                VulnerabilitySection:button({name = "Auto Generate", callback = function()
+                VulnerabilitySection:button({name = "Auto Generate Max Money", callback = function()
                     local Found, Cup = GetFruitCup()
 
                     if Cup and Found then
