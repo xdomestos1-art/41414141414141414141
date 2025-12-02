@@ -5799,7 +5799,7 @@ getgenv().Teleport = LPH_NO_VIRTUALIZE(function(CF, DontUi)
     hum.WalkSpeed = 0
     hum.JumpPower = 0
     hum.AutoRotate = false
-    task.wait(0.5)
+    task.wait(0.4)
 
     hum:ChangeState(0)
 
@@ -15583,7 +15583,7 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                         ReplicatedStorage.BackpackRemote:InvokeServer("Store", ToolName)
                     end)
 
-                    task.wait(2.5)
+                    task.wait(3.2)
 
                     pcall(function()
                         ReplicatedStorage.BuyItemRemote:FireServer(ToolName, "Remove", ToolId)
@@ -15597,7 +15597,7 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                     Cooldown = false
                 end
 
-                task.wait(3.5)
+                task.wait(2) --3
             end
 
             library.notifications:create_notification({
@@ -15657,13 +15657,13 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                             ReplicatedStorage.ListWeaponRemote:FireServer(ToolName, 999999)
                         end)
 
-                        task.wait(.26)
+                        task.wait(.25) --26
 
                         spawn(function()
                             ReplicatedStorage.BackpackRemote:InvokeServer('Store', ToolName)
                         end)
 
-                        task.wait(2.6) --27
+                        task.wait(3.2) --2.6
 
                         spawn(function()
                             ReplicatedStorage.BuyItemRemote:FireServer(ToolName, 'Remove', ToolId)
@@ -15681,7 +15681,7 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                     end)
                 end})
 
-                DupingSection:label({wrapped = true, name = "Auto Dupe Can Take Some Time To Fill Your Inventory."})
+                DupingSection:label({wrapped = true, name = "Equip The Gun Before Enabling Auto Dupe!"})
 
                 local VulnerabilitySection = Column:section({name = "Money Section", size = 0.450, default = false, side = 'right', icon = GetImage("unlocked.png")}) 
 
@@ -15850,63 +15850,61 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                 end})
 
 VulnerabilitySection:button({name = "Clean All Red Money", callback = LPH_NO_VIRTUALIZE(function()
-                    if LocalPlayer.stored.FilthyStack.Value == 0 then 
-                        return library.notifications:create_notification({
-                            name = "Aethra",
-                            info = `You have no fucking money poor fuck!`,
-                            lifetime = 7.5
-                        })
-                    end
-        
-                    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
-                    if not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character:FindFirstChild("Humanoid").Health == 0 then return end
-        
-                    local Cleaner = GetGoodCleaner()
-                    
-                    if not Cleaner then
-                        return library.notifications:create_notification({
-                            name = "Aethra",
-                            info = `Could not find a valid cleaner!`,
-                            lifetime = 7.5
-                        })
-                    end
-        
-                    Teleport(Cleaner.WorldPivot)
-        
-                    task.wait(0.4)
-        
-                    fireproximityprompt(Cleaner:FindFirstChild("CashPrompt", true))
-        
-                    repeat task.wait() until Cleaner:FindFirstChild("On", true).Color == Color3.fromRGB(74, 156, 69)
-        
-                    task.wait(0.5)
-        
-                    fireproximityprompt(Cleaner:FindFirstChild("CashPrompt", true))
-                    
-                    task.wait(0.25)
-        
-                    Teleport(Cleaner.WorldPivot)
-        
-                    task.wait(0.4)
-        
-                    repeat task.wait() until LocalPlayer.Backpack:FindFirstChild("MoneyReady")
-        
-                    LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack["MoneyReady"])
-        
-                    repeat task.wait(1) fireproximityprompt(Cleaner:FindFirstChild("GrabPrompt", true)) until not LocalPlayer.Character:FindFirstChild("MoneyReady")
-                    
-                    repeat task.wait(1) until LocalPlayer.Backpack:FindFirstChild("BagOfMoney")
-        
-                    Teleport(CFrame.new(-222.29, 283.81, -1200.90))
-        
-                    task.wait(0.4)
-        
-                    LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack["BagOfMoney"])
-        
-                    task.wait(1)
-        
-                    fireproximityprompt(Workspace.ATMMoney.Prompt)
-                end)})                
+    if LocalPlayer.stored.FilthyStack.Value == 0 then 
+        return library.notifications:create_notification({
+            name = "Aethra",
+            info = "You have no fucking money poor fuck!",
+            lifetime = 7.5
+        })
+    end
+
+    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
+    if not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character:FindFirstChild("Humanoid").Health == 0 then return end
+
+    local Cleaner = GetGoodCleaner()
+    if not Cleaner then
+        return library.notifications:create_notification({
+            name = "Aethra",
+            info = "Could not find a valid cleaner!",
+            lifetime = 7.5
+        })
+    end
+
+    local OldCF = LocalPlayer.Character.HumanoidRootPart.CFrame
+
+    Teleport(Cleaner.WorldPivot)
+    task.wait(0.4)
+    fireproximityprompt(Cleaner:FindFirstChild("CashPrompt", true))
+
+    repeat task.wait() until Cleaner:FindFirstChild("On", true).Color == Color3.fromRGB(74,156,69)
+    task.wait(0.5)
+    fireproximityprompt(Cleaner:FindFirstChild("CashPrompt", true))
+
+    task.wait(0.25)
+    Teleport(Cleaner.WorldPivot)
+    task.wait(0.4)
+
+    repeat task.wait() until LocalPlayer.Backpack:FindFirstChild("MoneyReady")
+
+    LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack["MoneyReady"])
+
+    repeat
+        fireproximityprompt(Cleaner:FindFirstChild("GrabPrompt", true))
+        task.wait(3)
+    until not LocalPlayer.Character:FindFirstChild("MoneyReady")
+
+    repeat task.wait(1) until LocalPlayer.Backpack:FindFirstChild("BagOfMoney")
+
+    Teleport(CFrame.new(-222.29, 283.81, -1200.90))
+
+    LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack["BagOfMoney"])
+    task.wait(1)
+    fireproximityprompt(Workspace.ATMMoney.Prompt)
+
+    Teleport(OldCF)
+
+end)})
+       
 
 VulnerabilitySection:button({name = "Manual Generate Money", callback = function()
         local char = LocalPlayer.Character
