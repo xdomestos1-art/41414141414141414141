@@ -4899,9 +4899,8 @@ UserInputService.JumpRequest:Connect(function()
     
     local humanoid = character:FindFirstChildWhichIsA("Humanoid")
     if not humanoid then return end
-    
+
     if not Config.TheBronx.PlayerModifications.NoJumpCooldown then
-        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
         return
     end
 
@@ -4914,7 +4913,8 @@ UserInputService.JumpRequest:Connect(function()
     end
 
     humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-end)           
+end)
+    
 
 --[[test carfly
 local RunService = game:GetService("RunService")
@@ -15893,10 +15893,9 @@ VulnerabilitySection:button({name = "Clean All Filthy Money", callback = LPH_NO_
         
                     LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack["MoneyReady"])
         
-                    repeat task.wait(0.1) fireproximityprompt(Cleaner:FindFirstChild("GrabPrompt", true)) until not LocalPlayer.Character:FindFirstChild("MoneyReady")
+                    repeat task.wait(1) fireproximityprompt(Cleaner:FindFirstChild("GrabPrompt", true)) until not LocalPlayer.Character:FindFirstChild("MoneyReady")
                     
-                    repeat task.wait()
-                    until LocalPlayer.Backpack:FindFirstChild("BagOfMoney")
+                    repeat task.wait(1) until LocalPlayer.Backpack:FindFirstChild("BagOfMoney")
         
                     Teleport(CFrame.new(-222.29, 283.81, -1200.90))
         
