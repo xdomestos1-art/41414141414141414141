@@ -15906,7 +15906,7 @@ VulnerabilitySection:button({name = "Clean All Red Money", callback = LPH_NO_VIR
 end)})
        
 
-VulnerabilitySection:button({name = "Manual Generate Money", callback = function()
+VulnerabilitySection:button({name = "Manual Generate Max Money", callback = function()
         local char = LocalPlayer.Character
         if not char then return end
 
@@ -15970,8 +15970,7 @@ VulnerabilitySection:button({name = "Manual Generate Money", callback = function
     end
 })
 
-VulnerabilitySection:button({name = "Buy Items For Manual", callback = function()
-
+VulnerabilitySection:button({name = "Buy Items For Manual And Tp Stove", callback = function()
         local Items = {
             "FijiWater",
             "FreshWater",
@@ -15979,9 +15978,9 @@ VulnerabilitySection:button({name = "Buy Items For Manual", callback = function(
             "Ice-Fruit Cupz"
         }
 
+        -- Itemleri satın alma
         for _, item in ipairs(Items) do
             if not LocalPlayer.Backpack:FindFirstChild(item) then
-
                 pcall(function()
                     ReplicatedStorage:WaitForChild("ExoticShopRemote"):InvokeServer(item)
                 end)
@@ -15989,13 +15988,32 @@ VulnerabilitySection:button({name = "Buy Items For Manual", callback = function(
             end
         end
 
+        -- Bildirim
         library.notifications:create_notification({
             name = "Aethra",
             info = "Bought Items!",
             lifetime = 5
         })
+
+        local Stove = nil
+
+        for _, v in Workspace.CookingPots:GetChildren() do
+            if v:IsA("Model") then
+                local prompt = v:FindFirstChildWhichIsA("ProximityPrompt", true)
+                if prompt and prompt.ActionText == "Turn On" and prompt.Enabled then
+                    Stove = v
+                    break
+                end
+            end
+        end
+
+        if Stove and Stove:FindFirstChild("CookPart") then
+            Teleport(Stove.CookPart.CFrame, true)
+        end
     end
 })
+
+
 
                 local KillAuraSection = Column:section({name = "Kill Aura Section", size = 0.275, default = false, side = 'right', icon = GetImage("Bullet.png")}) 
 
