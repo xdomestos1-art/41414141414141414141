@@ -10278,9 +10278,9 @@ if not Mobile then
             return setmetatable(cfg, library)
         end 
 
-        function library:init_config(window) 
-            --window:seperator({name = ""})
-            local main = window:tab({name = "Configs", tabs = {"Main"}})
+          function library:init_config(window) 
+            --window:seperator({name = "Settings"})
+            local main, playerlist = window:tab({name = "Configs", tabs = {"Main", "Playerlist"}}) do
             
             local column = main:column({})
             local section = column:section({name = "Configs", size = 1, default = false, icon = "rbxassetid://139628202576511"})
@@ -10400,7 +10400,7 @@ if not Mobile then
                 Services.TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId)
             end})
             
-            --[[local _column = playerlist:column({})
+            local _column = playerlist:column({})
             local _section = _column:section({name = "Players", size = 1, default = false})
 
             local plr_list = _section:list({options = {}, flag = "player_list"});
@@ -10493,7 +10493,7 @@ if not Mobile then
             players.PlayerAdded:Connect(refreshplrs)
 
             players.PlayerRemoving:Connect(refreshplrs)
-        end]]
+        end
     --
 
     -- Notification Library
@@ -10652,9 +10652,8 @@ if not Mobile then
                 items[ "notification" ]:Destroy() 
             end)
         end
-    --end)()
     end
-    else
+else
             --LPH_JIT_MAX(function()
 
 -- Variables
@@ -14768,7 +14767,7 @@ if Game_Name == "The Bronx" then
 local function setSky(skyIds)
     local L = game:GetService("Lighting")
     
-    L.ClockTime = 9 -- sabah 9
+    L.ClockTime = 9
 
     local old = L:FindFirstChildOfClass("Sky")
     if old then old:Destroy() end
@@ -15850,61 +15849,59 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                 end})
 
 VulnerabilitySection:button({name = "Clean All Red Money", callback = LPH_NO_VIRTUALIZE(function()
-    if LocalPlayer.stored.FilthyStack.Value == 0 then 
-        return library.notifications:create_notification({
-            name = "Aethra",
-            info = "You have no fucking money poor fuck!",
-            lifetime = 7.5
-        })
-    end
+        if LocalPlayer.stored.FilthyStack.Value == 0 then 
+            return library.notifications:create_notification({
+                name = "Aethra",
+                info = "You have no money!",
+                lifetime = 7.5
+            })
+        end
 
-    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
-    if not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character:FindFirstChild("Humanoid").Health == 0 then return end
+        local character = LocalPlayer.Character
+        if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+        local humanoid = character:FindFirstChild("Humanoid")
+        if not humanoid or humanoid.Health == 0 then return end
 
-    local Cleaner = GetGoodCleaner()
-    if not Cleaner then
-        return library.notifications:create_notification({
-            name = "Aethra",
-            info = "Could not find a valid cleaner!",
-            lifetime = 7.5
-        })
-    end
+        local Cleaner = GetGoodCleaner()
+        if not Cleaner then
+            return library.notifications:create_notification({
+                name = "Aethra",
+                info = "Could not find a valid cleaner!",
+                lifetime = 7.5
+            })
+        end
 
-    local OldCF = LocalPlayer.Character.HumanoidRootPart.CFrame
+        local OldCF = character.HumanoidRootPart.CFrame
 
-    Teleport(Cleaner.WorldPivot)
-    task.wait(0.4)
-    fireproximityprompt(Cleaner:FindFirstChild("CashPrompt", true))
+        Teleport(Cleaner.WorldPivot)
+        task.wait(0.4)
+        fireproximityprompt(Cleaner:FindFirstChild("CashPrompt", true))
 
-    repeat task.wait() until Cleaner:FindFirstChild("On", true).Color == Color3.fromRGB(74,156,69)
-    task.wait(0.5)
-    fireproximityprompt(Cleaner:FindFirstChild("CashPrompt", true))
+        repeat task.wait() until Cleaner:FindFirstChild("On", true).Color == Color3.fromRGB(74,156,69)
+        task.wait(0.5)
+        fireproximityprompt(Cleaner:FindFirstChild("CashPrompt", true))
+        task.wait(0.25)
 
-    task.wait(0.25)
-    Teleport(Cleaner.WorldPivot)
-    task.wait(0.4)
+        Teleport(Cleaner.WorldPivot)
+        task.wait(0.4)
 
-    repeat task.wait() until LocalPlayer.Backpack:FindFirstChild("MoneyReady")
+        repeat task.wait() until LocalPlayer.Backpack:FindFirstChild("MoneyReady")
+        humanoid:EquipTool(LocalPlayer.Backpack["MoneyReady"])
 
-    LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack["MoneyReady"])
+        repeat
+            fireproximityprompt(Cleaner:FindFirstChild("GrabPrompt", true))
+            task.wait(1)
+        until not character:FindFirstChild("MoneyReady")
 
-    repeat
-        fireproximityprompt(Cleaner:FindFirstChild("GrabPrompt", true))
-        task.wait(3)
-    until not LocalPlayer.Character:FindFirstChild("MoneyReady")
+        repeat task.wait(5) until LocalPlayer.Backpack:FindFirstChild("BagOfMoney")
+        Teleport(CFrame.new(-222.29, 283.81, -1200.90))
+        humanoid:EquipTool(LocalPlayer.Backpack["BagOfMoney"])
+        task.wait(1)
+        fireproximityprompt(Workspace.ATMMoney.Prompt)
 
-    repeat task.wait(1) until LocalPlayer.Backpack:FindFirstChild("BagOfMoney")
-
-    Teleport(CFrame.new(-222.29, 283.81, -1200.90))
-
-    LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack["BagOfMoney"])
-    task.wait(1)
-    fireproximityprompt(Workspace.ATMMoney.Prompt)
-
-    Teleport(OldCF)
-
-end)})
-       
+        Teleport(OldCF)
+    end)
+})
 
 VulnerabilitySection:button({name = "Manual Generate Max Money", callback = function()
         local char = LocalPlayer.Character
