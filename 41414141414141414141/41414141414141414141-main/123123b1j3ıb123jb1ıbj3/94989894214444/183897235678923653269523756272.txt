@@ -15596,7 +15596,7 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                     Cooldown = false
                 end
 
-                task.wait(2.5) --3
+                task.wait(3.2) --3
             end
 
             library.notifications:create_notification({
