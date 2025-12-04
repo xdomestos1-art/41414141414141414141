@@ -15576,13 +15576,13 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                         ReplicatedStorage.ListWeaponRemote:FireServer(ToolName, 999999)
                     end)
 
-                    task.wait(.25)
+                    task.wait(.26)
 
                     pcall(function()
                         ReplicatedStorage.BackpackRemote:InvokeServer("Store", ToolName)
                     end)
 
-                    task.wait(3.2)
+                    task.wait(3)
 
                     pcall(function()
                         ReplicatedStorage.BuyItemRemote:FireServer(ToolName, "Remove", ToolId)
@@ -15596,7 +15596,7 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                     Cooldown = false
                 end
 
-                task.wait(2) --3
+                task.wait(2.5) --3
             end
 
             library.notifications:create_notification({
