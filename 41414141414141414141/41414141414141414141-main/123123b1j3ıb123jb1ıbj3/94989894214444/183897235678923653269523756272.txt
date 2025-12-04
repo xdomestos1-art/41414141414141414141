@@ -15582,7 +15582,7 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                         ReplicatedStorage.BackpackRemote:InvokeServer("Store", ToolName)
                     end)
 
-                    task.wait(3)
+                    task.wait(2.8)
 
                     pcall(function()
                         ReplicatedStorage.BuyItemRemote:FireServer(ToolName, "Remove", ToolId)
@@ -15656,13 +15656,13 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                             ReplicatedStorage.ListWeaponRemote:FireServer(ToolName, 999999)
                         end)
 
-                        task.wait(.25) --26
+                        task.wait(.26) --26
 
                         spawn(function()
                             ReplicatedStorage.BackpackRemote:InvokeServer('Store', ToolName)
                         end)
 
-                        task.wait(3.2) --2.6
+                        task.wait(3.1) --2.6
 
                         spawn(function()
                             ReplicatedStorage.BuyItemRemote:FireServer(ToolName, 'Remove', ToolId)
@@ -15680,7 +15680,7 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                     end)
                 end})
 
-                DupingSection:label({wrapped = true, name = "Equip The Gun Before Enabling Auto Dupe!"})
+                DupingSection:label({wrapped = true, name = "Might Take A Few Tries!"})
 
                 local VulnerabilitySection = Column:section({name = "Money Section", size = 0.450, default = false, side = 'right', icon = GetImage("unlocked.png")}) 
 
