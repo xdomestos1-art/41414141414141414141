@@ -392,6 +392,7 @@ local Config = {
             ["BypassLockedCars"] = false;
             ["DisableBloodEffects"] = false;
             ["NoRentPay"] = false;
+            ["AntiLoseItems"] = false;
             ["NoJumpCooldown"] = false;
             ["NoFallDamage"] = false;
             ["NoKnockback"] = false;
@@ -5799,7 +5800,7 @@ getgenv().Teleport = LPH_NO_VIRTUALIZE(function(CF, DontUi)
     hum.WalkSpeed = 0
     hum.JumpPower = 0
     hum.AutoRotate = false
-    task.wait(0.4)
+    task.wait(0.5)
 
     hum:ChangeState(0)
 
@@ -5817,6 +5818,34 @@ getgenv().Teleport = LPH_NO_VIRTUALIZE(function(CF, DontUi)
     return true 
 end)
            -- new tp end
+
+
+
+           -- experimantal teleport
+--[[getgenv().Teleport = LPH_NO_VIRTUALIZE(function(CF, DontUi)
+    if not LocalPlayer.Character then return end
+
+    local char = LocalPlayer.Character
+    local hum = char:FindFirstChild("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp then return end
+
+    hrp.Anchored = true
+    hum.AutoRotate = false
+    hum:ChangeState(0)
+
+    repeat task.wait() until not LocalPlayer:GetAttribute("LastACPos")
+
+    hrp.CFrame = CF
+
+    task.wait(0.1)
+
+    hum:ChangeState(2)
+    hrp.Anchored = false
+    hum.AutoRotate = true
+
+    return true
+end)]]
 
             GetWorkingSafe = LPH_NO_VIRTUALIZE(function()
                 local House; local Safe;
@@ -5926,7 +5955,7 @@ end)
                 
 
                 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
-            end))
+            end))         
 
             ProximityPromptService.PromptButtonHoldBegan:Connect(function(Prompt, Self)
                 if Prompt and Self == LocalPlayer and fireproximityprompt then
@@ -14497,11 +14526,11 @@ if Game_Name == "The Bronx" then
                             end
                         end)
 
-                        task.delay(3, function()
+                        task.delay(2, function()
                             ItemSafed = true
                         end)
 
-                        task.wait(0.5)
+                        task.wait(0.4)
 
                         ReplicatedStorage.Inventory:FireServer("Change", Tool, "Backpack", Safe)
 
@@ -14539,11 +14568,11 @@ if Game_Name == "The Bronx" then
                             end
                         end)
 
-                        task.delay(3, function()
+                        task.delay(2, function()
                             ItemSafed = true
                         end)
 
-                        task.wait(0.5)
+                        task.wait(0.4)
 
                         ReplicatedStorage.Inventory:FireServer("Change", Tool, "Inv", Safe)
 
@@ -14624,7 +14653,190 @@ if Game_Name == "The Bronx" then
 
                 LocalPlayer:WaitForChild("InvData").ChildAdded:Connect(RefreshTakeItemList)
                 LocalPlayer:WaitForChild("InvData").ChildRemoved:Connect(RefreshTakeItemList)
+
+--[[experiment
+local function FastTP(cf)
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    local HRP = char:FindFirstChild("HumanoidRootPart")
+    if HRP then
+        HRP.CFrame = cf
+    end
+end
+
+
+local SafeItemSection = SafeItemColumn:section({
+    name = "Safe Selected Item",
+    side = "left",
+    size = 1,
+    icon = GetImage("Lock.png")
+})
+
+local _SafeItem = SafeItemSection:list({
+    flag = "SafeSelectedItem_TheBronx",
+    options = {},
+    callback = function(state)
+        task.spawn(LPH_NO_VIRTUALIZE(function()
+            if not state then return end
+
+            local Safe = GetWorkingSafe()
+            if not Safe then return end
+
+            local HRP = LocalPlayer.Character.HumanoidRootPart
+            local OldCFrame = HRP.CFrame
+
+            FastTP(Safe.ChestClicker.CFrame)
+            task.wait(0.05)
+
+            pcall(function()
+                LocalPlayer.Character.Humanoid:UnequipTools()
+            end)
+
+            local Tool = tostring(state)
+            local Done = false
+
+            local conn
+            conn = LocalPlayer.Backpack.ChildRemoved:Connect(function(child)
+                if child.Name == Tool then
+                    Done = true
+                    conn:Disconnect()
+                end
+            end)
+
+            task.delay(1, function() Done = true end)
+
+            task.wait(0.1)
+
+            ReplicatedStorage.Inventory:FireServer("Change", Tool, "Backpack", Safe)
+
+            repeat task.wait(0.1) until Done
+
+            task.wait(0.5)
+            FastTP(OldCFrame)
+
+            library.notifications:create_notification({
+                name = "Aethra",
+                info = `Successfully safed {Tool}!`,
+                lifetime = 5
+            })
+        end))
+    end
+})
+
+SafeItemColumn = SafeTab:column({})
+
+SafeItemSection = SafeItemColumn:section({
+    name = "Take Selected Item",
+    side = "right",
+    size = 1,
+    icon = GetImage("UZI.png")
+})
+
+local _TakeItem = SafeItemSection:list({
+    flag = "TakeSelectedItem_TheBronx",
+    options = {},
+    callback = function(state)
+        task.spawn(LPH_NO_VIRTUALIZE(function()
+            if not state then return end
+
+            local Safe = GetWorkingSafe()
+            if not Safe then return end
+
+            local HRP = LocalPlayer.Character.HumanoidRootPart
+            local OldCFrame = HRP.CFrame
+
+           FastTP(Safe.ChestClicker.CFrame)
+            task.wait(0.05)
+
+            local Tool = tostring(state)
+            local Done = false
+
+            local conn
+            conn = LocalPlayer.Backpack.ChildAdded:Connect(function(child)
+                if child.Name == Tool then
+                    Done = true
+                    conn:Disconnect()
+                end
+            end)
+
+            task.delay(1, function() Done = true end)
+
+            task.wait(0.1)
+
+            ReplicatedStorage.Inventory:FireServer("Change", Tool, "Inv", Safe)
+
+            repeat task.wait(0.1) until Done
+
+            task.wait(0.5)
+            FastTP(OldCFrame)
+
+            library.notifications:create_notification({
+                name = "Aethra",
+                info = `Successfully took {Tool} from safe!`,
+                lifetime = 5
+            })
+        end))
+    end
+})
+
+local Backpack_ChildAdded, Backpack_ChildRemoved
+
+local ConnectBackpackToRefreshSafeList = LPH_JIT_MAX(function()
+    LocalPlayer:WaitForChild("Backpack")
+
+    local Refresh = LPH_NO_VIRTUALIZE(function()
+        local Items = {}
+
+        for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
+            if tool:IsA("Tool") then
+                table.insert(Items, tool.Name)
             end
+        end
+
+        table.sort(Items)
+        _SafeItem.refresh_options(Items)
+        return Items
+    end)
+
+    task.spawn(Refresh)
+
+    if Backpack_ChildAdded then Backpack_ChildAdded:Disconnect() end
+    if Backpack_ChildRemoved then Backpack_ChildRemoved:Disconnect() end
+
+    Backpack_ChildAdded = LocalPlayer.Backpack.ChildAdded:Connect(Refresh)
+    Backpack_ChildRemoved = LocalPlayer.Backpack.ChildRemoved:Connect(Refresh)
+end)
+
+Players.PlayerRemoving:Connect(LPH_NO_VIRTUALIZE(function(player)
+    if player == LocalPlayer then
+        if Backpack_ChildAdded then Backpack_ChildAdded:Disconnect() end
+        if Backpack_ChildRemoved then Backpack_ChildRemoved:Disconnect() end
+    end
+end))
+
+task.spawn(ConnectBackpackToRefreshSafeList)
+LocalPlayer.CharacterAdded:Connect(ConnectBackpackToRefreshSafeList)
+
+local RefreshTakeItemList = LPH_NO_VIRTUALIZE(function()
+    local Items = {}
+
+    for _, value in ipairs(LocalPlayer:WaitForChild("InvData"):GetChildren()) do
+        table.insert(Items, value.Name)
+    end
+
+    table.sort(Items)
+    _TakeItem.refresh_options(Items)
+
+    return Items
+end)
+
+task.spawn(RefreshTakeItemList)
+
+LocalPlayer:WaitForChild("InvData").ChildAdded:Connect(RefreshTakeItemList)
+LocalPlayer:WaitForChild("InvData").ChildRemoved:Connect(RefreshTakeItemList)
+--experiment end]]
+
 
             do -- \\ Local Player Tab
                 local LocalPlayerColumn = LocalPlayerTab:column({})
@@ -14644,6 +14856,7 @@ if Game_Name == "The Bronx" then
                     "Disable Blood Effects";
                     "Bypass Locked Cars";
                     "No Rent Pay";
+                    "Anti Lose Items";
                     "No Jump Cooldown";
                     "No Fall Damage";
                     "No Knockback";
@@ -14762,7 +14975,7 @@ if Game_Name == "The Bronx" then
                     Config.TheBronx.WithdrawAmount = state
                 end})
 
-                local Skysection = ExtraTabColumn:section({name = "Custom Skybox", side = "right", size = 0.450, icon = GetImage("Settings.png")})
+                local Skysection = ExtraTabColumn:section({name = "Custom Skyboxes", side = "right", size = 0.450, icon = GetImage("Settings.png")})
 
 local function setSky(skyIds)
     local L = game:GetService("Lighting")
@@ -14786,19 +14999,19 @@ end
 
 
 -- Realistic Day Time
-Skysection:button({name = "Realistic Day Time", callback = function()
+Skysection:button({name = "Day Time", callback = function()
     setSky({
-        Bk = "rbxassetid://1666456837",
-        Dn = "rbxassetid://1666455881",
-        Ft = "rbxassetid://1666457447",
-        Lf = "rbxassetid://1666455318",
-        Rt = "rbxassetid://1666456385",
-        Up = "rbxassetid://1666458034"
+        Bk = "rbxassetid://74258544564321",
+        Dn = "rbxassetid://75418092548143",
+        Ft = "rbxassetid://114547356324218",
+        Lf = "rbxassetid://91138773974890",
+        Rt = "rbxassetid://111749399946832",
+        Up = "rbxassetid://96933043812138"
     })
 end})
 
 -- Realistic Night Time
-Skysection:button({name = "Realistic Night Time", callback = function()
+Skysection:button({name = "Night Time", callback = function()
     setSky({
         Bk = "rbxassetid://155624722",
         Dn = "rbxassetid://155624727",
@@ -14809,19 +15022,19 @@ Skysection:button({name = "Realistic Night Time", callback = function()
     })
 end})
 
--- Pink Galaxy
-Skysection:button({name = "Pink Galaxy", callback = function()
+-- Pink 
+Skysection:button({name = "Pink Clouds", callback = function()
     setSky({
-        Bk = "rbxassetid://13581437029",
-        Dn = "rbxassetid://13581439832",
-        Ft = "rbxassetid://13581447312",
-        Lf = "rbxassetid://13581443463",
-        Rt = "rbxassetid://13581452875",
-        Up = "rbxassetid://13581450222"
+        Bk = "rbxassetid://11555017034",
+        Dn = "rbxassetid://11555013415",
+        Ft = "rbxassetid://11555010145",
+        Lf = "rbxassetid://11555006545",
+        Rt = "rbxassetid://11555000712",
+        Up = "rbxassetid://11554996247"
     })
 end})
 
--- Purple Galaxy
+-- ai sky
 Skysection:button({name = "Purple Galaxy", callback = function()
     setSky({
         Bk = "rbxassetid://159454299",
@@ -14833,27 +15046,34 @@ Skysection:button({name = "Purple Galaxy", callback = function()
     })
 end})
 
--- Orange Nebula
-Skysection:button({name = "Orange Nebula", callback = function()
+-- Sunset
+Skysection:button({name = "Sunset", callback = function()
     setSky({
-        Bk = "rbxassetid://81433279927713",
-        Dn = "rbxassetid://129325460377771",
-        Ft = "rbxassetid://71477196369941",
-        Lf = "rbxassetid://80180374270149",
-        Rt = "rbxassetid://128070977031689",
-        Up = "rbxassetid://107324788782658"
+        Bk = "rbxassetid://15502525195",
+        Dn = "rbxassetid://15502522797",
+        Ft = "rbxassetid://15502524520",
+        Lf = "rbxassetid://15502522129",
+        Rt = "rbxassetid://15502523711",
+        Up = "rbxassetid://15502526102"
     })
 end})
 
--- Red Sky
-Skysection:button({name = "Red Sky", callback = function()
+       --[[ Bk = "rbxassetid://15470129182",
+        Dn = "rbxassetid://15470130287",
+        Ft = "rbxassetid://15470132018",
+        Lf = "rbxassetid://15470133980",
+        Rt = "rbxassetid://15470136370",
+        Up = "rbxassetid://15470139181"]]
+
+-- summer pro
+Skysection:button({name = "Cloudy Summer", callback = function()
     setSky({
-        Bk = "rbxassetid://401664839",
-        Dn = "rbxassetid://401664862",
-        Ft = "rbxassetid://401664960",
-        Lf = "rbxassetid://401664881",
-        Rt = "rbxassetid://401664901",
-        Up = "rbxassetid://401664936"
+        Bk = "rbxassetid://17838127289",
+        Dn = "rbxassetid://17838129609",
+        Ft = "rbxassetid://17838144422",
+        Lf = "rbxassetid://17838131484",
+        Rt = "rbxassetid://17838148822",
+        Up = "rbxassetid://17838140709"
     })
 end})
 
@@ -15002,6 +15222,64 @@ ExtraSection:button({
     end
 })
 -- end bring car
+
+ExtraSection:button({
+    name = "Explode All Cars (Press 2 Times.)",
+    callback = function()
+        local LocalPlayer = game.Players.LocalPlayer
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local gun = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildWhichIsA("Tool")
+
+        if not gun then
+            library.notifications:create_notification({
+                name = "Aethra",
+                info = "Hold a gun first!",
+                lifetime = 4
+            })
+            return
+        end
+
+        local civCars = workspace:FindFirstChild("CivCars")
+        if not civCars then return end
+
+        library.notifications:create_notification({
+            name = "Aethra",
+            info = "Exploding all Vehicles...",
+            lifetime = 2
+        })
+
+        local count = 0
+        for _, car in civCars:GetChildren() do
+            if car:IsA("Model") then
+                count += 1
+                task.spawn(function()
+                    local success, part = pcall(function()
+                        return car:FindFirstChildWhichIsA("BasePart") or car.PrimaryPart
+                    end)
+                    if not success or not part then return end
+
+                    for i = 1, 60 do
+                        pcall(function()
+                            ReplicatedStorage.InflictCar:InvokeServer(
+                                gun,
+                                car,
+                                part,
+                                9e9
+                            )
+                        end)
+                    end
+                end)
+            end
+        end
+
+        task.wait(0.6)
+        library.notifications:create_notification({
+            name = "Aethra",
+            info = count .. " Vehicles Exploded!",
+            lifetime = 5
+        })
+    end
+})
                            
                 ExtraSection:button({name = "Hide Identity.", callback = function()
                 local Player = game.Players.LocalPlayer
@@ -15231,7 +15509,7 @@ ExtraSection:button({name = "Blue Gang Fit",callback = function()
 
                 local UISection = LocalPlayerColumn:section({name = "Toggle GUI", side = "right", size = 0.220, icon = GetImage("Settings.png")})
 
-                local _UINames, BlacklistedNames = {'ATM GUI'}, {"Dead", "Settings1", "Controls", "FirstShopGUI", "ThaShop2", "WATCH GUI", "NYPD Cars", "CONSTRUCTION LEVEL", "RobPlayerUI", "Bronx LOCKER", 'MobileBeam', 'Settings', 'Flash', 'Enter'}
+                local _UINames, BlacklistedNames = {'ATM GUI'}, {"Dead", "Settings1", "Controls", "FirstShopGUI", "ColorWheel", "CopSirens", "TEST LOCKPICK", "BACKPACK UI", "Garage GUI [OLD]", "TRUNK STORAGE", "ThaShop2", "WATCH GUI", "NYPD Cars", "CONSTRUCTION LEVEL", "RobPlayerUI", "Bronx LOCKER", 'MobileBeam', 'Settings', 'Flash', 'Enter'}
                 
                 for Index, Value in LocalPlayer.PlayerGui:GetChildren() do
                     if Value:IsA("ScreenGui") and not Value.Enabled then
@@ -15431,7 +15709,7 @@ PlayerOptionsSection:button({
 
                 PlayerOptionsSection:button({name = "Fling Player - Hold Gun", callback = function(state)
                     for Index=1, 50 do
-                        pcall(kill_gun, Config.TheBronx.PlayerUtilities.SelectedPlayer, "RightUpperArm", 0.01) --RightUpperLeg
+                        pcall(kill_gun, Config.TheBronx.PlayerUtilities.SelectedPlayer, "LeftUpperLeg", 0.01) --RightUpperLeg
                     end
                 end})
 
@@ -15529,6 +15807,8 @@ megaphonesection:button({name = "PULL OVER NOW!", callback = function()
 
                 local DupingSection = Column:section({name = "Duping Section", size = 0.34, default = false, side = 'right', icon = GetImage("Node.png")}) 
 
+
+--auto dupe start
 DupingSection:toggle({name = "Auto Dupe", callback = function(state)
         AutoDupe = state
         task.spawn(function()
@@ -15576,13 +15856,13 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                         ReplicatedStorage.ListWeaponRemote:FireServer(ToolName, 999999)
                     end)
 
-                    task.wait(.26)
+                    task.wait(.25) --255
 
                     pcall(function()
                         ReplicatedStorage.BackpackRemote:InvokeServer("Store", ToolName)
                     end)
 
-                    task.wait(2.8)
+                    task.wait(2.9) --3.3
 
                     pcall(function()
                         ReplicatedStorage.BuyItemRemote:FireServer(ToolName, "Remove", ToolId)
@@ -15596,7 +15876,7 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                     Cooldown = false
                 end
 
-                task.wait(3.2) --3
+                task.wait(3) --3.5
             end
 
             library.notifications:create_notification({
@@ -15607,11 +15887,91 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
         end)
     end
 })               
--- old dupe end
+-- auto dupe end
 
+-- anti lose items
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+local ExemptItems = {"Phone", "Fist", "Shiesty"}
+
+local function SetupCharacter(char)
+    if not Config.TheBronx.PlayerModifications.AntiLoseItems then return end
+
+    local humanoid = char:WaitForChild("Humanoid")
+    humanoid.Died:Connect(function()
+        task.wait(0.05)
+
+        local equipped = char:FindFirstChildOfClass("Tool")
+        if equipped and not table.find(ExemptItems, equipped.Name) then
+            pcall(function()
+                ReplicatedStorage.BackpackRemote:InvokeServer("Store", equipped.Name)
+            end)
+            task.wait(0.6)
+        end
+
+        for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
+            if tool:IsA("Tool") and not table.find(ExemptItems, tool.Name) then
+                pcall(function()
+                    ReplicatedStorage.ListWeaponRemote:FireServer(tool.Name, 999999)
+                end)
+                task.wait(3.1) 
+            end
+        end
+    end)
+
+    task.spawn(function()
+        task.wait(2.5) 
+
+        local market = ReplicatedStorage:WaitForChild("MarketItems", 10)
+        if not market then return end
+
+        local attempts = 0
+        while attempts < 8 do  
+            attempts += 1
+            local anyFound = false
+
+            for _, item in ipairs(market:GetChildren()) do
+                local owner = item:FindFirstChild("owner")
+                local specialId = item:GetAttribute("SpecialId")
+                local toolName = item.Name
+
+                if owner and owner.Value == LocalPlayer.Name 
+                and specialId 
+                and not table.find(ExemptItems, toolName) then
+                    
+                    anyFound = true
+
+                    pcall(function()
+                        ReplicatedStorage.BuyItemRemote:FireServer(toolName, "Remove", specialId)
+                    end)
+                    task.wait(0.4)
+
+                    pcall(function()
+                        ReplicatedStorage.BackpackRemote:InvokeServer("Grab", toolName)
+                    end)
+
+                    task.wait(1.6)
+                end
+            end
+
+            if not anyFound then break end 
+            task.wait(1)
+        end
+    end)
+end
+
+LocalPlayer.CharacterAdded:Connect(SetupCharacter)
+if LocalPlayer.Character then
+    SetupCharacter(LocalPlayer.Character)
+end
+-- anti lose end
+
+-- normal dupe
                 local Cooldown = false;
 
-                DupingSection:button({name = "Duplicate Current Item", callback = function()
+                DupingSection:button({name = "Duplicate Once", callback = function()
                     task.spawn(function()
                         if Cooldown then
                             library.notifications:create_notification({
@@ -15656,13 +16016,13 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                             ReplicatedStorage.ListWeaponRemote:FireServer(ToolName, 999999)
                         end)
 
-                        task.wait(.26) --26
+                        task.wait(.255) --26
 
                         spawn(function()
                             ReplicatedStorage.BackpackRemote:InvokeServer('Store', ToolName)
                         end)
 
-                        task.wait(3.1) --2.6
+                        task.wait(3.02) --2.6
 
                         spawn(function()
                             ReplicatedStorage.BuyItemRemote:FireServer(ToolName, 'Remove', ToolId)
@@ -15680,7 +16040,7 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                     end)
                 end})
 
-                DupingSection:label({wrapped = true, name = "Might Take A Few Tries!"})
+                DupingSection:label({wrapped = true, name = "Might Take A Few Tries! Be Patient."})
 
                 local VulnerabilitySection = Column:section({name = "Money Section", size = 0.450, default = false, side = 'right', icon = GetImage("unlocked.png")}) 
 
@@ -15703,11 +16063,10 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                 end)                                                 
 
 
-                VulnerabilitySection:button({name = "Auto Generate Max Money", callback = function()
+VulnerabilitySection:button({name = " Auto Generate Max Money", callback = function()
                     local Found, Cup = GetFruitCup()
 
                     if Cup and Found then
-                        --HideUI("generating illegal cash 💷\n please wait.")
 
                         local OLDCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
 
@@ -15728,12 +16087,10 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
 
                         Teleport(OLDCFrame)
 
-                        --DeleteSecretUI()
 
                         return
                     end
 
-                    --HideUI("buying products 🍉")
 
                     local OLDCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
 
@@ -15753,7 +16110,7 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                     for Index, Value in Itemz do
                         if not LocalPlayer.Backpack:FindFirstChild(Value) then
                             ReplicatedStorage:WaitForChild("ExoticShopRemote"):InvokeServer(Value)
-                            task.wait(0.08)
+                            task.wait(0.1)
                         end
                     end
 
@@ -15766,7 +16123,7 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                     end
 
                     if Check then
-                        --DeleteSecretUI()
+
                         library.notifications:create_notification({
                             name = "Aethra",
                             info = `Could not find items! Please check you have more than 5000$.`,
@@ -15774,10 +16131,6 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
                         })
                         return
                     end
-
-                    --DeleteSecretUI()
-
-                    --HideUI("generating illegal cash 💷\n please wait..")
 
                     Teleport(Stove.CookPart.CFrame, true)
 
@@ -15845,7 +16198,6 @@ DupingSection:toggle({name = "Auto Dupe", callback = function(state)
 
                     task.wait(2)
 
-                    --pcall(DeleteSecretUI)
                 end})
 
 VulnerabilitySection:button({name = "Clean All Red Money", callback = LPH_NO_VIRTUALIZE(function()
@@ -15975,7 +16327,6 @@ VulnerabilitySection:button({name = "Buy Items For Manual And Tp Stove", callbac
             "Ice-Fruit Cupz"
         }
 
-        -- Itemleri satın alma
         for _, item in ipairs(Items) do
             if not LocalPlayer.Backpack:FindFirstChild(item) then
                 pcall(function()
@@ -15985,7 +16336,6 @@ VulnerabilitySection:button({name = "Buy Items For Manual And Tp Stove", callbac
             end
         end
 
-        -- Bildirim
         library.notifications:create_notification({
             name = "Aethra",
             info = "Bought Items!",
@@ -16026,9 +16376,9 @@ VulnerabilitySection:button({name = "Buy Items For Manual And Tp Stove", callbac
             do -- \\ Purchase Guns
                 local PurchaseGunColumn = PurchaseGunTab:column({})
 
-                local WeaponListSection = PurchaseGunColumn:section({name = "Purchase Selected Item", side = "left", size = 1, icon = GetImage("Cash.png")})
+                local WeaponListSection = PurchaseGunColumn:section({name = "Purchase Selected Item", side = "left", size = 0.550, icon = GetImage("Cash.png")})
 
-                WeaponListSection:list({flag = "PurchaseSelectedItem_TheBronx", options = Config.Guns, callback = function(state)
+                --[[WeaponListSection:list({flag = "PurchaseSelectedItem_TheBronx", options = Config.Guns, callback = function(state)
                     task.spawn(LPH_NO_VIRTUALIZE(function()
                         if not state then
                             return
@@ -16062,7 +16412,7 @@ VulnerabilitySection:button({name = "Buy Items For Manual And Tp Stove", callbac
                         
                         task.spawn(Teleport, Part)
 
-                        task.wait(0.4)
+                        task.wait(0.3)
 
                         local ItemReceieved = false;
                         task.spawn(function()
@@ -16083,7 +16433,7 @@ VulnerabilitySection:button({name = "Buy Items For Manual And Tp Stove", callbac
 
                         repeat task.wait(); fireproximityprompt(Prompt); until ItemReceieved == true;
                         
-                        task.wait(0.4)
+                       task.wait(0.3)
 
                         task.spawn(Teleport, OldCFrame)
 
@@ -16093,7 +16443,214 @@ VulnerabilitySection:button({name = "Buy Items For Manual And Tp Stove", callbac
                             lifetime = 5
                         })
                     end))
-                end})
+                end})]]
+
+                --new item buy
+WeaponListSection:list({
+    flag = "PurchaseSelectedItem_TheBronx",
+    options = Config.Guns,
+    callback = function(state)
+        task.spawn(function()
+
+            if not state then return end
+
+            local item = string.match(state, "^(.*) %-")
+            if not item then return end
+            item = item:match("^%s*(.-)%s*$")
+
+            local gunFolder = Workspace:FindFirstChild("GUNS")
+            if not gunFolder then return end
+
+            local gun = gunFolder:FindFirstChild(item)
+            if not gun then return end
+
+            local prompt = gun:FindFirstChildWhichIsA("ProximityPrompt", true)
+            local price = gun:FindFirstChild("Price", true)
+            local gamepass = gun:FindFirstChild("GamepassID", true)
+
+            if not prompt or not price then return end
+
+            local HRP = LocalPlayer.Character.HumanoidRootPart
+            local oldCF = HRP.CFrame
+
+            if gamepass then
+                local id = gamepass.Value
+                if not MarketplaceService:UserOwnsGamePassAsync(LocalPlayer.UserId, id) then
+                    return library.notifications:create_notification({
+                        name = "Aethra",
+                        info = "You do not own the gamepass!",
+                        lifetime = 4
+                    })
+                end
+            end
+
+            if LocalPlayer.stored.Money.Value < price.Value then
+                return library.notifications:create_notification({
+                    name = "Aethra",
+                    info = `You are {price.Value - LocalPlayer.stored.Money.Value} short.`,
+                    lifetime = 4
+                })
+            end
+
+            local part = prompt.Parent.CFrame or gun.PrimaryPart.CFrame
+            HRP.CFrame = part
+            task.wait(0.05)
+
+            pcall(function()
+                prompt.MaxActivationDistance = 25
+            end)
+
+            pcall(function()
+                prompt.Parent.CFrame = HRP.CFrame
+            end)
+
+            task.wait(0.05)
+
+            for i = 1, 3 do
+                pcall(function()
+                    fireproximityprompt(prompt, 1)
+                end)
+                task.wait(0.1)
+            end
+
+            task.wait(0.5)
+            HRP.CFrame = oldCF
+
+            library.notifications:create_notification({
+                name = "Aethra",
+                info = `Purchased {item}!`,
+                lifetime = 4
+            })
+
+        end)
+    end
+})
+
+
+                local quickbuysec = PurchaseGunColumn:section({name = "Quick Buy", side = "left", size = 0.450, icon = GetImage("Cash.png")})
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = game:GetService("Players").LocalPlayer
+local MarketplaceService = game:GetService("MarketplaceService")
+
+local GunsFolder = Workspace:WaitForChild("GUNS")
+
+local ShopRemote2 = ReplicatedStorage:WaitForChild("ShopRemote2")
+local ExoticShopRemote = ReplicatedStorage:WaitForChild("ExoticShopRemote")
+
+local GunsToBuy = {"Draco", "BagElite"}
+
+local function SmartTP(cf)
+    local HRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if HRP then
+        HRP.CFrame = cf
+    end
+end
+
+for _, gunName in ipairs(GunsToBuy) do
+    quickbuysec:button({
+        name = gunName,
+        callback = function()
+
+            local gun = GunsFolder:FindFirstChild(gunName)
+            if not gun then
+                return library.notifications:create_notification({
+                    name = "Aethra",
+                    info = gunName .. " not found!",
+                    lifetime = 5
+                })
+            end
+
+            local Prompt = gun:FindFirstChildWhichIsA("ProximityPrompt", true)
+            if not Prompt then
+                return library.notifications:create_notification({
+                    name = "Aethra",
+                    info = "Prompt not found!",
+                    lifetime = 5
+                })
+            end
+
+            if gun:FindFirstChild("Price") then
+                if LocalPlayer.stored.Money.Value < gun.Price.Value then
+                    return library.notifications:create_notification({
+                        name = "Aethra",
+                        info = `You are {gun.Price.Value - LocalPlayer.stored.Money.Value} short.`,
+                        lifetime = 5
+                    })
+                end
+            end
+
+            local HRP = LocalPlayer.Character.HumanoidRootPart
+            local OldCFrame = HRP.CFrame
+
+            local BuyPos = (Prompt.Parent:IsA("BasePart") and Prompt.Parent.CFrame) 
+                or (gun.PrimaryPart and gun.PrimaryPart.CFrame) 
+                or OldCFrame
+
+            SmartTP(BuyPos)
+            task.wait(0.05)
+
+            pcall(function()
+                Prompt.MaxActivationDistance = 25
+            end)
+
+            task.wait(0.1)
+
+            local gotItem = false
+
+            local check = LocalPlayer.Backpack.ChildAdded:Connect(function(child)
+                if child.Name == gunName then
+                    gotItem = true
+                end
+            end)
+
+            task.delay(1.2, function()
+                gotItem = true
+            end)
+
+            repeat
+                task.wait(0.02)
+                fireproximityprompt(Prompt, 1)
+            until gotItem
+
+            check:Disconnect()
+
+            SmartTP(OldCFrame)
+
+            library.notifications:create_notification({
+                name = "Aethra",
+                info = gunName .. " Purchased!",
+                lifetime = 5
+            })
+        end
+    })
+end
+
+quickbuysec:button({
+    name = "Bandage",
+    callback = function()
+        ShopRemote2:InvokeServer("Bandage")
+        library.notifications:create_notification({
+            name = "Aethra",
+            info = "Bandage Purchased!",
+            lifetime = 5
+        })
+    end
+})
+
+quickbuysec:button({
+    name = "Lemonade",
+    callback = function()
+        ExoticShopRemote:InvokeServer("Lemonade") 
+        library.notifications:create_notification({
+            name = "Aethra",
+            info = "Lemonade Purchased!",
+            lifetime = 5
+        })
+    end
+})
+
 
                 PurchaseGunColumn = PurchaseGunTab:column({})
 
@@ -17264,5 +17821,6 @@ if hookfunction and not Solara and LPH_OBFUSCATED and Game_Name == "South Bronx"
 
         return _FireServer(self, ...)
     end)
+end
 end
 end
